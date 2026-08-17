@@ -57,8 +57,8 @@ mqsisetdbparms -w /var/mqsi/workdir -n odbc::MYDB_DSN -u dbuser -p dbpassword
 ```
 
 On a standalone server **with a vault** (this project's dev server), use the
-vault instead — credential name must equal the DSN (verified 2026-07-15,
-see `ace-claude/ODBC.md`):
+vault instead — credential name must equal the DSN (verified; see
+`ace-claude/ODBC.md`):
 ```bash
 mqsicredentials --work-dir <workdir> --create --vault-key <key> \
   --credential-type odbc --credential-name MYDB_DSN -u dbuser -p dbpassword

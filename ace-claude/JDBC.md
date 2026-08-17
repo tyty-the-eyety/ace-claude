@@ -1,7 +1,7 @@
 # Enabling JDBC for JavaCompute / built-in DB nodes (ACE 13.0.2.2, standalone IntegrationServer)
 
 The exact steps used to go from zero to a runtime-proven JavaCompute→JDBC→
-PostgreSQL flow on 2026-07-15 (worked first try after these steps). Concrete
+PostgreSQL flow (worked first try after these steps). Concrete
 values are this environment's; substitute your own. Worked example:
 `examples/jdbc/` (workspace proof `PG_JDBC_APP` + `PG_JDBC_JAVA`).
 
@@ -119,7 +119,7 @@ curl http://localhost:7800/jdbc/hosts
 # → {"hosts":[{"id":1,"name":"adguard","ip":"192.0.2.2","role":"dns"}, ...]}
 ```
 
-Verified 2026-07-15, zero errors, first run.
+Verified with zero errors, first run.
 
 ## Gotchas
 

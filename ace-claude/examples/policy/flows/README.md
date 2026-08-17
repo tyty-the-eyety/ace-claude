@@ -1,7 +1,7 @@
 # Verified policy-attachment flows
 
-Byte-for-byte copies of the flows that runtime-proved each policy type on
-2026-07-02 (from workspace app `POLICY_DEMO_APP`, ACE 13.0.2.2). Each one shows
+Byte-for-byte copies of the flows that runtime-proved each policy type (from
+workspace app `POLICY_DEMO_APP`, ACE 13.0.2.2). Each one shows
 the **node-side attachment** for a policy in `../POLICY_PROJECT_TEMPLATE/`.
 Copy-mutate these rather than authoring node XML from scratch.
 

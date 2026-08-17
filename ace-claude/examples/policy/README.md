@@ -2,7 +2,7 @@
 
 `POLICY_PROJECT_TEMPLATE/` is a copy of a policy project whose policies
 packaged, deployed, and (where marked) demonstrably took effect at runtime
-(2026-07-02, workspace projects `POLICY_DEMO_POLICIES` + `POLICY_DEMO_APP`).
+(workspace projects `POLICY_DEMO_POLICIES` + `POLICY_DEMO_APP`).
 Copy the whole directory, rename the project in `.project`, delete the
 policies you don't need, and mutate the rest. Do not author the scaffold from
 scratch. **The template's `.project` must never carry the name of a real

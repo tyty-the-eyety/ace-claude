@@ -1,4 +1,4 @@
-# Flow unit testing — headless ACE Test Project (runtime-proven 2026-07-15, 3/3 pass)
+# Flow unit testing — headless ACE Test Project (runtime-proven, 3/3 pass)
 
 JUnit 5 tests that inject a message assembly directly into a single node
 (NodeSpy) and assert on what it propagates — no HTTP client, queue, or

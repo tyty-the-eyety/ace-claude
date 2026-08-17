@@ -82,15 +82,15 @@ When you open a workspace containing `ace-claude/`, Claude Code:
 
 ## To-Do / Future Improvements
 
-- [x] Policy projects: scaffold, HTTPRequest/UserDefined/Timer/WLM/ActivityLog/MQEndpoint/JDBCProviders/HTTPReply examples, runtime-verified (2026-07-02)
-- [x] SecurityProfiles + vault credentials: inbound Local auth and outbound credential injection, runtime-verified (2026-07-02)
-- [x] TCPIP Client/Server policies: connectionDetails attachment, socket round trip, runtime-verified (2026-07-02)
-- [x] HTTP Proxy policy: deploy-verified; attachment (`proxyName`) is a post-13.0.2.2 fixpack feature — proxy transit proven via literal `httpProxyLocation` (2026-07-02)
-- [x] Aggregation / Collector / Resequence: policies + all three node families runtime-verified — `examples/eda/` (2026-07-14)
+- [x] Policy projects: scaffold, HTTPRequest/UserDefined/Timer/WLM/ActivityLog/MQEndpoint/JDBCProviders/HTTPReply examples, runtime-verified
+- [x] SecurityProfiles + vault credentials: inbound Local auth and outbound credential injection, runtime-verified
+- [x] TCPIP Client/Server policies: connectionDetails attachment, socket round trip, runtime-verified
+- [x] HTTP Proxy policy: deploy-verified; attachment (`proxyName`) is a post-13.0.2.2 fixpack feature — proxy transit proven via literal `httpProxyLocation`
+- [x] Aggregation / Collector / Resequence: policies + all three node families runtime-verified — `examples/eda/`
 - [ ] Add guidance on subflow library division and dependent library projects
 - [ ] Expand connector MD files with more real-world policy examples
-- [x] JavaCompute patterns example (JDBC, MbMessage/MbJSON API) — `JDBC.md` + `examples/jdbc/`, runtime-verified vs PostgreSQL (2026-07-15)
-- [x] Database node (DatabaseRetrieve) example — `examples/dbnode/` incl. the undocumented msgflow grid encoding, runtime-verified (2026-07-15)
-- [x] DFDL domain: schema anatomy, node config, parse + write flows, error signatures — `DFDL.md` + `examples/dfdl/`, runtime-verified (2026-07-06)
-- [x] Flow unit testing, fully headless (Test Project + NodeSpy + `--test-project`) — `examples/unittest/`, 3/3 pass (2026-07-15)
-- [x] ODBC + direct-ESQL-SELECT database access — `ODBC.md` + `examples/odbc/`, runtime-verified vs PostgreSQL (2026-07-15)
+- [x] JavaCompute patterns example (JDBC, MbMessage/MbJSON API) — `JDBC.md` + `examples/jdbc/`, runtime-verified vs PostgreSQL
+- [x] Database node (DatabaseRetrieve) example — `examples/dbnode/` incl. the undocumented msgflow grid encoding, runtime-verified
+- [x] DFDL domain: schema anatomy, node config, parse + write flows, error signatures — `DFDL.md` + `examples/dfdl/`, runtime-verified
+- [x] Flow unit testing, fully headless (Test Project + NodeSpy + `--test-project`) — `examples/unittest/`, 3/3 pass
+- [x] ODBC + direct-ESQL-SELECT database access — `ODBC.md` + `examples/odbc/`, runtime-verified vs PostgreSQL

@@ -1,4 +1,4 @@
-# JDBC from JavaCompute — PostgreSQL via JDBCProviders policy (runtime-proven 2026-07-15)
+# JDBC from JavaCompute — PostgreSQL via JDBCProviders policy (runtime-proven)
 
 Read `ace-claude/JDBC.md` (the step-by-step enablement runbook) first. Files here:
 - `PG_JDBC_MF.msgflow` — WSInput(/jdbc/hosts) → JavaCompute(javaClass="PgJdbcQuery") → WSReply

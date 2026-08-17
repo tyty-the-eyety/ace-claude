@@ -47,7 +47,7 @@ END MODULE;
 -- All loop variable DECLAREs belong at the top of the procedure.
 -- Declare nested references outside the loop; MOVE them inside.
 -- Use NEXTSIBLING REPEAT NAME to advance through siblings of the same element name.
--- JSON arrays (verified 2026-07-05): a bare [i] on a named output path does
+-- JSON arrays (verified): a bare [i] on a named output path does
 -- NOT build a JSON array — it emits repeated object keys (invalid JSON).
 -- CREATE FIELD ... IDENTITY (JSON.Array)name first, then set anonymous
 -- Item[i] children. Nested arrays need their own (JSON.Array) per parent.

@@ -1,4 +1,4 @@
-# EDA node examples — Aggregation, Collector, Resequence (all runtime-proven 2026-07-14, ACE 13.0.2.2 + MQ 9.4.0.5)
+# EDA node examples — Aggregation, Collector, Resequence (all runtime-proven, ACE 13.0.2.2 + MQ 9.4.0.5)
 
 Copy-ready flows for the three MQ-backed event-driven-architecture node families.
 Read the matching `LEARNINGS.md` section ("EDA nodes") before mutating these —

@@ -4,7 +4,7 @@ DFDL (Data Format Description Language) models text/binary wire formats —
 CSV, fixed-length records, tagged delimited, COBOL copybook data — as a plain
 XSD annotated with `dfdl:` properties. The runtime parses raw bytes into a
 logical tree at `InputRoot.DFDL` and serializes `OutputRoot.DFDL` back to
-bytes. Both directions verified 2026-07-06 (workspace project
+bytes. Both directions verified (workspace project
 `DFDL_DEMO_APP`, HTTP round trip against the shipped `company.txt` sample).
 
 **Do not author a DFDL schema from scratch.** Copy

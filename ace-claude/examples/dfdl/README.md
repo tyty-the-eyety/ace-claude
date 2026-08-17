@@ -5,7 +5,7 @@ configuration, and error signatures. This directory holds the verified
 artifacts.
 
 `DFDL_APP_TEMPLATE/` is a copy of workspace project `DFDL_DEMO_APP`, whose
-two flows packaged, deployed, and passed HTTP smoke tests on 2026-07-06.
+two flows packaged, deployed, and passed HTTP smoke tests.
 Copy the whole directory, rename the project in `.project` (**never leave a
 name that collides with a real project** — ibmint scans the whole
 `--input-path`; duplicates → BIP8081E), and mutate.

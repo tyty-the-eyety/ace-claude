@@ -59,7 +59,7 @@ The connector-specific `.md` file contains the example policy XML for each conne
 - Property element names come from `Policy.xsd` — **the XSD is authoritative over the IBM docs property tables** (known docs typo: HTTPRequest policy `endpointURL` is listed there as `endpointUrl`).
 - Copy-and-mutate `examples/policy/POLICY_PROJECT_TEMPLATE/` rather than authoring the scaffold from scratch; see `examples/policy/README.md`.
 
-### Common non-connector policy types (all verified 2026-07-02 unless noted)
+### Common non-connector policy types (all verified unless noted)
 
 - **HTTPRequest** — attach to HTTPRequest/HTTPAsyncRequest nodes; key properties `endpointURL` (protocol/host/port[/path] override) and `endpointURLOverrideBehaviour` (`ProtocolHostAndPort` default, or `ProtocolHostPortAndPath` to replace the whole node URL). Also supports basic-auth/API-key/OAuth2 credential properties.
 - **UserDefined** — no schema; arbitrary child elements become string properties. Readable from JavaCompute or Graphical Data Maps (not plain ESQL); also visible via the admin REST API.

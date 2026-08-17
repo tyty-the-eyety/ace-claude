@@ -1,4 +1,4 @@
-# ODBC from ESQL — PostgreSQL via PASSTHRU (runtime-proven 2026-07-15, ACE 13.0.2.2 + PostgreSQL 17)
+# ODBC from ESQL — PostgreSQL via PASSTHRU (runtime-proven, ACE 13.0.2.2 + PostgreSQL 17)
 
 Copy-ready HTTP app proving the full ESQL→ODBC path: SELECT (multi-row → JSON
 array) and parameterised INSERT with `RETURNING`. Workspace proof:

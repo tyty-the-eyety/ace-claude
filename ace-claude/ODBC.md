@@ -1,7 +1,7 @@
 # Enabling ODBC for ESQL database access (ACE 13.0.2.2, standalone IntegrationServer)
 
-The exact steps used to go from zero to a runtime-proven ESQL→PostgreSQL flow
-on 2026-07-15. Concrete values are this environment's (dev server work dir
+The exact steps used to go from zero to a runtime-proven ESQL→PostgreSQL flow.
+Concrete values are this environment's (dev server work dir
 `/path/to/dev-server`, vault key `devVaultKey123`, PostgreSQL 17
 on LXC `db.example.com`, db `mydb`, db user `dbuser`); substitute your own.
 Worked example app: `examples/odbc/` (and workspace proof `DB_PG_ODBC_APP`).
@@ -117,7 +117,7 @@ curl http://localhost:7800/pg/addhost \
   -d '{"name":"x","ip":"192.0.2.50","role":"test"}'   # INSERT ... RETURNING id
 ```
 
-Both verified 2026-07-15 with zero errors on first run after steps 1–6.
+Both verified with zero errors on first run after steps 1–6.
 
 ---
 

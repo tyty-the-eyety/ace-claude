@@ -1,4 +1,4 @@
-# DatabaseRetrieve node — JDBC lookup/enrichment without code (runtime-proven 2026-07-15)
+# DatabaseRetrieve node — JDBC lookup/enrichment without code (runtime-proven)
 
 `WSInput(/dbnode/customer, JSON) → DatabaseRetrieve → WSReply`, keyNotFound
 terminal → Compute({"found":false}) → WSReply. Workspace proof: `DB_NODE_APP`
