@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="WorkloadManagement" policyName="MaxRate2PerSec" policyTemplate="">
+    <notificationThresholdMsgsPerSec>0</notificationThresholdMsgsPerSec>
+    <maximumRateMsgsPerSec>2</maximumRateMsgsPerSec>
+    <processingTimeoutSec>0</processingTimeoutSec>
+    <processingTimeoutAction>none</processingTimeoutAction>
+    <additionalInstances>0</additionalInstances>
+  </policy>
+</policies>

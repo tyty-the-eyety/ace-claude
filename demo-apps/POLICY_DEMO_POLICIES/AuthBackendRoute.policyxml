@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="HTTPRequest" policyName="AuthBackendRoute" policyTemplate="HTTPRequest">
+    <acceptSelfSignedCerts>false</acceptSelfSignedCerts>
+    <credentialName>backendBasic</credentialName>
+    <endpointURL>http://localhost:7800/policy-secure</endpointURL>
+    <endpointURLOverrideBehaviour>ProtocolHostPortAndPath</endpointURLOverrideBehaviour>
+  </policy>
+</policies>

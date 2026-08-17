@@ -1,0 +1,47 @@
+CREATE COMPUTE MODULE DB_PG_ODBC_MF_GetHosts
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE refResults ROW;
+		DECLARE i INTEGER 1;
+
+		SET refResults.rows[] = PASSTHRU(
+			'SELECT id, name, CAST(ip AS VARCHAR) AS ip, role FROM homelab_hosts ORDER BY id'
+			TO Database.PGDB);
+
+		SET OutputRoot.HTTPReplyHeader."Content-Type" = 'application/json';
+		CREATE FIELD OutputRoot.JSON.Data.hosts IDENTITY (JSON.Array)hosts;
+
+		DECLARE rowRef REFERENCE TO refResults.rows[1];
+		WHILE LASTMOVE(rowRef) DO
+			SET OutputRoot.JSON.Data.hosts.Item[i].id   = rowRef.id;
+			SET OutputRoot.JSON.Data.hosts.Item[i].name = rowRef.name;
+			SET OutputRoot.JSON.Data.hosts.Item[i].ip   = rowRef.ip;
+			SET OutputRoot.JSON.Data.hosts.Item[i].role = rowRef.role;
+			MOVE rowRef NEXTSIBLING REPEAT NAME;
+			SET i = i + 1;
+		END WHILE;
+
+		RETURN TRUE;
+	END;
+END MODULE;
+
+CREATE COMPUTE MODULE DB_PG_ODBC_MF_AddHost
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE newName CHARACTER InputRoot.JSON.Data.name;
+		DECLARE newIp   CHARACTER InputRoot.JSON.Data.ip;
+		DECLARE newRole CHARACTER InputRoot.JSON.Data.role;
+		DECLARE refResult ROW;
+
+		SET refResult.rows[] = PASSTHRU(
+			'INSERT INTO homelab_hosts (name, ip, role) VALUES (?, CAST(? AS INET), ?) RETURNING id'
+			TO Database.PGDB
+			VALUES(newName, newIp, newRole));
+
+		SET OutputRoot.HTTPReplyHeader."Content-Type" = 'application/json';
+		SET OutputRoot.JSON.Data.inserted.id   = refResult.rows.id;
+		SET OutputRoot.JSON.Data.inserted.name = newName;
+
+		RETURN TRUE;
+	END;
+END MODULE;

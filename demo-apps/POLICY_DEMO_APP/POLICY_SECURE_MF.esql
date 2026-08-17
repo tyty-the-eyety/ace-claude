@@ -1,0 +1,14 @@
+CREATE COMPUTE MODULE POLICY_SECURE_MF_Compute
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+
+		SET OutputRoot.JSON.Data.secured = TRUE;
+		SET OutputRoot.JSON.Data.caller  = InputRoot.JSON.Data.caller;
+		SET OutputRoot.JSON.Data.status  = 'authenticated';
+
+		RETURN TRUE;
+	END;
+
+END MODULE;

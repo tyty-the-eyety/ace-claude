@@ -1,0 +1,20 @@
+CREATE COMPUTE MODULE MQ_COLLECTOR_MF_BuildCombined
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE collRef   REFERENCE TO InputRoot.Collection;
+		DECLARE folderRef REFERENCE TO collRef.*[1];
+		DECLARE i         INTEGER 1;
+
+		SET OutputRoot.XMLNSC.Combined.FromA = collRef.legA.XMLNSC.Msg.Data;
+		SET OutputRoot.XMLNSC.Combined.FromB = collRef.legB.XMLNSC.Msg.Data;
+
+		-- record the collection child names actually present, so a path mismatch is diagnosable from the output message
+		WHILE LASTMOVE(folderRef) DO
+			SET OutputRoot.XMLNSC.Combined.Folders.Folder[i] = FIELDNAME(folderRef);
+			MOVE folderRef NEXTSIBLING;
+			SET i = i + 1;
+		END WHILE;
+
+		RETURN TRUE;
+	END;
+END MODULE;

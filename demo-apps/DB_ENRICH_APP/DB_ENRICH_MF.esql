@@ -1,0 +1,45 @@
+-- Routes an incoming JSON message to PREMIUM.QUEUE, STANDARD.QUEUE, or UNKNOWN.QUEUE
+-- based on the tier column looked up from the customers table via ODBC.
+--
+-- Key pattern — computeMode="exception" on the Compute node:
+--   ACE does not copy InputRoot into OutputRoot. The original message assembly is
+--   propagated unchanged to whichever terminal is chosen. No SET OutputRoot needed.
+--   This avoids the full message tree copy on every message when the node has no
+--   reason to modify the body — a useful but rarely-known ACE optimisation.
+--
+-- Database access is ODBC (not JDBC). ESQL Compute nodes can only use ODBC.
+--   JDBC is for JavaCompute nodes and built-in Database nodes.
+--   DSN "PGDB" is defined in the work dir's odbc.ini (PostgreSQL — see ace-claude/ODBC.md);
+--   credentials live in the server vault (mqsicredentials --credential-type odbc
+--   --credential-name PGDB) and the server must be started with ODBCINI set.
+--
+-- Direct ESQL SELECT (no PASSTHRU): the table is fully qualified as
+--   Database.<DSN>.<schema>.<table>. PostgreSQL folds unquoted identifiers to
+--   lowercase, so schema/table/column names here are all lowercase.
+--
+-- Input JSON: { "customerId": "CUST001", ... }
+CREATE COMPUTE MODULE DB_ENRICH_MF_Compute
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE custId CHARACTER InputRoot.JSON.Data.customerId;
+
+		-- SELECT ITEM returns a scalar value (not a ROW tree).
+		-- Returns NULL when no row matches custId.
+		DECLARE tier CHARACTER THE(SELECT ITEM T.tier
+		                           FROM   Database.PGDB.public.customers AS T
+		                           WHERE  T.cust_id = custId);
+
+		IF tier = 'PREMIUM' THEN
+			PROPAGATE TO TERMINAL 'out';
+		ELSEIF tier = 'STANDARD' THEN
+			PROPAGATE TO TERMINAL 'out1';
+		ELSE
+			-- Covers: no matching row (tier IS NULL) and any unrecognised tier value
+			PROPAGATE TO TERMINAL 'out2';
+		END IF;
+
+		RETURN FALSE;
+	END;
+
+END MODULE;

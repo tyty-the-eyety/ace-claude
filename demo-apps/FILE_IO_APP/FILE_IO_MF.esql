@@ -1,0 +1,108 @@
+-- NOTE ON PATHS: this flow reads from /tmp/ace-file-io/in and writes to
+-- /tmp/ace-file-io/out (errors to .../error, archive to .../in/archive).
+-- Create them before starting the server:
+--
+--     mkdir -p /tmp/ace-file-io/{in/archive,out,error}
+--
+-- ACE File nodes require ABSOLUTE directory paths — a relative path such as
+-- 'data/in' is rejected at startup with BIP3333E, so these cannot be made
+-- relative to the project. Change them to any writable absolute directory.
+--
+-- ProcessFile: reads the input file content, prepends a processing header, and
+-- writes the result to the output directory with 'processed_' prefixed to the
+-- original filename.
+CREATE COMPUTE MODULE FILE_IO_MF_ProcessFile
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Cast the raw file bytes to a character string
+		DECLARE content CHARACTER CAST(InputRoot.BLOB.BLOB AS CHARACTER CCSID 1208);
+
+		-- Prepend a processing header line to the file content
+		-- X'0A' is a linefeed character
+		DECLARE LF CHARACTER CAST(X'0A' AS CHARACTER CCSID 1208);
+		DECLARE processed CHARACTER
+			'## Processed: ' || CAST(CURRENT_TIMESTAMP AS CHARACTER) || LF || content;
+
+		SET OutputRoot.Properties.CodedCharSetId = 1208;
+		SET OutputRoot.BLOB.BLOB = CAST(processed AS BLOB CCSID 1208);
+
+		-- Set the output filename.
+		-- InputLocalEnvironment.File.Name holds the original filename; fall back to
+		-- a fixed name if unavailable. NOTE: the FileInput response fields live
+		-- directly under LocalEnvironment.File, NOT under ComIbmFileInput.Response —
+		-- the latter resolves to NULL and silently forces the fallback name.
+		-- Requires computeMode="destinationAndMessage" on this node, otherwise
+		-- OutputLocalEnvironment is discarded and FileOutput gets an empty filename.
+		DECLARE origName CHARACTER InputLocalEnvironment.File.Name;
+		SET OutputLocalEnvironment.Destination.File.Name =
+			CASE WHEN origName IS NOT NULL THEN 'processed_' || origName
+			     ELSE 'processed_output.txt'
+			END;
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+-- HandleError: runs on the TryCatch catch path.
+-- Writes a plain-text error report to /error, named 'error_<original_filename>'
+-- so the failed file can be identified and investigated.
+CREATE COMPUTE MODULE FILE_IO_MF_HandleError
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Extract root cause from ExceptionList
+		DECLARE errNumber INTEGER;
+		DECLARE errText   CHARACTER;
+		DECLARE errDetail CHARACTER '';
+		DECLARE errType   CHARACTER '';
+		CALL getLastError(InputExceptionList, errNumber, errText, errDetail, errType);
+
+		-- Build a plain-text error report as the file body
+		DECLARE LF CHARACTER CAST(X'0A' AS CHARACTER CCSID 1208);
+		DECLARE report CHARACTER
+			'## Error Report' || LF ||
+			'Timestamp : ' || CAST(CURRENT_TIMESTAMP AS CHARACTER) || LF ||
+			'Flow      : ' || MessageFlowLabel                      || LF ||
+			'Code      : ' || CAST(errNumber AS CHARACTER)          || LF ||
+			'Text      : ' || errText                               || LF ||
+			'Details   : ' || errDetail;
+
+		SET OutputRoot.Properties.CodedCharSetId = 1208;
+		SET OutputRoot.BLOB.BLOB = CAST(report AS BLOB CCSID 1208);
+
+		-- Name the error file after the original input file for traceability.
+		-- See the note in FILE_IO_MF_ProcessFile: the path is LocalEnvironment.File.Name.
+		DECLARE origName CHARACTER InputLocalEnvironment.File.Name;
+		SET OutputLocalEnvironment.Destination.File.Name =
+			CASE WHEN origName IS NOT NULL THEN 'error_' || origName
+			     ELSE 'error_output.txt'
+			END;
+
+		PROPAGATE TO TERMINAL 'out' DELETE NONE;
+		RETURN FALSE;
+	END;
+
+	-- Walks the ExceptionList tree to the deepest level to find the root cause error.
+	CREATE PROCEDURE getLastError(
+		IN  tree    REFERENCE,
+		OUT num     INTEGER,
+		OUT txt     CHARACTER,
+		OUT details CHARACTER,
+		OUT type    CHARACTER)
+	BEGIN
+		DECLARE ptr REFERENCE TO tree.*[1];
+		WHILE LASTMOVE(ptr) DO
+			IF ptr.Number IS NOT NULL THEN
+				SET num     = ptr.Number;
+				SET txt     = ptr.Text;
+				SET details = ptr.*[<].Text;
+				SET type    = CAST(ptr.*[<].Type AS CHARACTER);
+			END IF;
+			MOVE ptr LASTCHILD;
+		END WHILE;
+	END;
+
+END MODULE;

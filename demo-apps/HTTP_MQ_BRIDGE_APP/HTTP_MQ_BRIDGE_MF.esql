@@ -1,0 +1,94 @@
+-- BuildMQMsg: serialises the incoming HTTP JSON body into an MQ BLOB message.
+-- The original JSON is preserved byte-for-byte as the MQ message body.
+CREATE COMPUTE MODULE HTTP_MQ_BRIDGE_MF_BuildMQMsg
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Set MQMD encoding fields for the outgoing MQ message
+		SET OutputRoot.MQMD.Format         = 'MQSTR   ';
+		SET OutputRoot.MQMD.Encoding       = 546;
+		SET OutputRoot.MQMD.CodedCharSetId = 1208;
+
+		-- Optionally carry an HTTP correlation ID through to MQ as a UserIdentifier.
+		-- For a full CorrelId (24-byte binary), additional CAST handling is needed.
+		DECLARE correlId CHARACTER InputRoot.HTTPInputHeader."X-Correlation-Id";
+		IF correlId IS NOT NULL THEN
+			SET OutputRoot.MQMD.UserIdentifier = LEFT(correlId, 12);
+		END IF;
+
+		-- Serialise the parsed JSON tree back to raw bytes for the MQ message body
+		SET OutputRoot.BLOB.BLOB = ASBITSTREAM(InputRoot.JSON ENCODING 546 CCSID 1208);
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+-- SuccessReply: called after a successful MQOutput put.
+-- Sends HTTP 202 Accepted back to the original HTTP caller.
+CREATE COMPUTE MODULE HTTP_MQ_BRIDGE_MF_SuccessReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- LocalEnvironment must be forwarded so WSReply knows which HTTP client to reply to
+		SET OutputLocalEnvironment = InputLocalEnvironment;
+
+		SET OutputLocalEnvironment.Destination.HTTP.ReplyStatusCode = 202;
+		SET OutputRoot.Properties.ContentType                       = 'application/json';
+
+		SET OutputRoot.JSON.Data.status = 'accepted';
+		SET OutputRoot.JSON.Data.queue  = 'TARGET.QUEUE';
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+-- ErrorReply: called from the TryCatch catch path.
+-- Extracts the root cause from the ExceptionList and sends HTTP 500 to the caller.
+CREATE COMPUTE MODULE HTTP_MQ_BRIDGE_MF_ErrorReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputLocalEnvironment = InputLocalEnvironment;
+
+		SET OutputLocalEnvironment.Destination.HTTP.ReplyStatusCode = 500;
+		SET OutputRoot.Properties.ContentType                       = 'application/json';
+
+		DECLARE errNumber INTEGER;
+		DECLARE errText   CHARACTER;
+		DECLARE errDetail CHARACTER '';
+		DECLARE errType   CHARACTER '';
+		CALL getLastError(InputExceptionList, errNumber, errText, errDetail, errType);
+
+		SET OutputRoot.JSON.Data.status  = 'error';
+		SET OutputRoot.JSON.Data.code    = errNumber;
+		SET OutputRoot.JSON.Data.message = errText;
+
+		PROPAGATE TO TERMINAL 'out' DELETE NONE;
+		RETURN FALSE;
+	END;
+
+	-- Walks the ExceptionList tree to the deepest level to find the root cause error.
+	CREATE PROCEDURE getLastError(
+		IN  tree    REFERENCE,
+		OUT num     INTEGER,
+		OUT txt     CHARACTER,
+		OUT details CHARACTER,
+		OUT type    CHARACTER)
+	BEGIN
+		DECLARE ptr REFERENCE TO tree.*[1];
+		WHILE LASTMOVE(ptr) DO
+			IF ptr.Number IS NOT NULL THEN
+				SET num     = ptr.Number;
+				SET txt     = ptr.Text;
+				SET details = ptr.*[<].Text;
+				SET type    = CAST(ptr.*[<].Type AS CHARACTER);
+			END IF;
+			MOVE ptr LASTCHILD;
+		END WHILE;
+	END;
+
+END MODULE;

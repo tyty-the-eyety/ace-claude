@@ -1,0 +1,69 @@
+-- Maps an Order XML message (namespace urn:example:order:v1) to the target JSON structure.
+--
+-- Mapping patterns covered:
+--   Direct copy  : OrderId → order.id, OrderDate → order.date
+--   Rename       : Customer/Name → customer.fullName, etc.
+--   Type cast    : Active(string) → isActive(BOOLEAN)
+--                  Quantity(string) → qty(INTEGER)
+--                  UnitPrice / TotalAmount(string) → price / total(DECIMAL)
+--   Repeating    : Items/Item[] → order.lineItems[] JSON array
+--
+-- The source namespace (urn:example:order:v1) must be declared and used on every
+-- XMLNSC path — without the ns: prefix ACE cannot locate the elements.
+--
+-- JSON array: the lineItems field must be created as a (JSON.Array) first,
+-- then populated via anonymous Item[i] children. A bare [i] index on a named
+-- path does NOT build an array — it emits repeated "lineItems" keys.
+--
+-- FIELDVALUE() is NOT used here. It is only needed when an XML element has both
+-- attributes and text content (mixed content), e.g. <Amount currency="USD">127.49</Amount>.
+-- For plain leaf elements ACE extracts the text value directly from the path.
+DECLARE ns NAMESPACE 'urn:example:order:v1';
+
+CREATE COMPUTE MODULE XML_JSON_MAPPING_MF_Compute
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Anchor reference to the root XML element to keep paths short
+		DECLARE xmlOrder REFERENCE TO InputRoot.XMLNSC.ns:Order;
+
+		-- MQMD: mark output as a UTF-8 string so downstream readers parse it correctly
+		SET OutputRoot.MQMD.Format         = 'MQSTR   ';
+		SET OutputRoot.MQMD.Encoding       = 546;
+		SET OutputRoot.MQMD.CodedCharSetId = 1208;
+
+		-- Direct copies (field name unchanged, value unchanged)
+		SET OutputRoot.JSON.Data.order.id   = xmlOrder.ns:OrderId;
+		SET OutputRoot.JSON.Data.order.date = xmlOrder.ns:OrderDate;
+
+		-- Renames (value unchanged, field name differs between XML and JSON)
+		SET OutputRoot.JSON.Data.order.customer.fullName     = xmlOrder.ns:Customer.ns:Name;
+		SET OutputRoot.JSON.Data.order.customer.emailAddress = xmlOrder.ns:Customer.ns:Email;
+
+		-- Type cast: XML delivers "true"/"false" as a string; JSON needs a boolean
+		SET OutputRoot.JSON.Data.order.customer.isActive =
+			CAST(xmlOrder.ns:Customer.ns:Active AS BOOLEAN);
+
+		-- Repeating elements → JSON array.
+		-- REFERENCE + MOVE NEXTSIBLING walks sibling <Item> elements one by one.
+		-- lineItems is declared as a JSON.Array; its anonymous Item[i] children
+		-- serialize as array elements, producing: "lineItems": [{...}, {...}]
+		CREATE FIELD OutputRoot.JSON.Data.order.lineItems IDENTITY (JSON.Array)lineItems;
+		DECLARE i INTEGER 1;
+		DECLARE itemRef REFERENCE TO xmlOrder.ns:Items.ns:Item[1];
+		WHILE LASTMOVE(itemRef) DO
+			SET OutputRoot.JSON.Data.order.lineItems.Item[i].sku   = itemRef.ns:ProductCode;
+			SET OutputRoot.JSON.Data.order.lineItems.Item[i].name  = itemRef.ns:Description;
+			SET OutputRoot.JSON.Data.order.lineItems.Item[i].qty   = CAST(itemRef.ns:Quantity  AS INTEGER);
+			SET OutputRoot.JSON.Data.order.lineItems.Item[i].price = CAST(itemRef.ns:UnitPrice AS DECIMAL);
+			MOVE itemRef NEXTSIBLING REPEAT NAME;
+			SET i = i + 1;
+		END WHILE;
+
+		-- Type cast: XML string → JSON decimal
+		SET OutputRoot.JSON.Data.order.total = CAST(xmlOrder.ns:TotalAmount AS DECIMAL);
+
+		RETURN TRUE;
+	END;
+
+END MODULE;

@@ -1,0 +1,30 @@
+CREATE COMPUTE MODULE HTTP_JSON_MF_Compute
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Read fields from the incoming JSON body
+		DECLARE firstName CHARACTER InputRoot.JSON.Data.firstName;
+		DECLARE lastName  CHARACTER InputRoot.JSON.Data.lastName;
+		DECLARE age       INTEGER   InputRoot.JSON.Data.age;
+
+		-- Set response content type
+		SET OutputRoot.Properties.ContentType = 'application/json';
+
+		-- Build the JSON response tree under OutputRoot.JSON.Data
+		SET OutputRoot.JSON.Data.fullName = firstName || ' ' || lastName;
+		SET OutputRoot.JSON.Data.isAdult  = (age >= 18);
+		SET OutputRoot.JSON.Data.status   = 'success';
+
+		-- ASBITSTREAM serialises a parsed message tree to raw bytes.
+		-- Use it when you need the binary representation of a domain, e.g.
+		-- to embed the incoming request body as a string in the response:
+		--
+		--   DECLARE rawInput BLOB ASBITSTREAM(InputRoot.JSON, 1208);
+		--   SET OutputRoot.JSON.Data.echo = CAST(rawInput AS CHARACTER CCSID 1208);
+		--
+		-- The second argument (1208) is the CCSID for UTF-8 encoding.
+
+		RETURN TRUE;
+	END;
+
+END MODULE;

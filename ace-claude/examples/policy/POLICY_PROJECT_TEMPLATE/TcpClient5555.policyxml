@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="TCPIPClient" policyName="TcpClient5555" policyTemplate="">
+    <Hostname>localhost</Hostname>
+    <Port>5555</Port>
+    <MinimumConnections>0</MinimumConnections>
+    <MaximumConnections>10</MaximumConnections>
+    <ExpireConnectionSec>-1</ExpireConnectionSec>
+  </policy>
+</policies>

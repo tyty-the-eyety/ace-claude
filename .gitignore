@@ -1,0 +1,31 @@
+# Eclipse / ACE Toolkit workspace state
+.metadata/
+**/.settings/org.eclipse.core.resources.prefs.bak
+
+# Build + deploy artifacts
+bars/
+**/*.bar
+**/bin/
+**/run/
+**/*.class
+
+# Compiled Java jars inside app/test projects (ibmint compiles these)
+demo-apps/**/*.jar
+
+# Transient agent working files
+FAILURE-*.md
+**/build-*.log
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# OS noise
+.DS_Store
+Thumbs.db
+*~
+
+# Working notes — not for publication
+PRE-PUBLISH-CHECKLIST.md
+PUBLISH-NEXT-STEPS.md
+
+

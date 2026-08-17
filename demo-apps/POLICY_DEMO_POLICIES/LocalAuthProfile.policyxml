@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="SecurityProfiles" policyName="LocalAuthProfile" policyTemplate="">
+    <authentication>Local</authentication>
+    <authenticationConfig>demoUser</authenticationConfig>
+    <authorization>NONE</authorization>
+    <authorizationConfig></authorizationConfig>
+    <idToPropagateToTransport>Message ID</idToPropagateToTransport>
+    <keyStore>Reserved for future use</keyStore>
+    <mapping>NONE</mapping>
+    <mappingConfig></mappingConfig>
+    <passwordValue>PLAIN</passwordValue>
+    <propagation>FALSE</propagation>
+    <rejectBlankpassword>TRUE</rejectBlankpassword>
+    <transportPropagationConfig></transportPropagationConfig>
+    <trustStore>Reserved for future use</trustStore>
+  </policy>
+</policies>

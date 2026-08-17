@@ -1,0 +1,19 @@
+CREATE COMPUTE MODULE MQ_AGGREGATION_BACKEND_MF_EchoA
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot = InputRoot;
+		SET OutputRoot.MQMD.CorrelId = InputRoot.MQMD.MsgId;
+		SET OutputRoot.XMLNSC.Msg.Result = 'ResultA';
+		RETURN TRUE;
+	END;
+END MODULE;
+
+CREATE COMPUTE MODULE MQ_AGGREGATION_BACKEND_MF_EchoB
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot = InputRoot;
+		SET OutputRoot.MQMD.CorrelId = InputRoot.MQMD.MsgId;
+		SET OutputRoot.XMLNSC.Msg.Result = 'ResultB';
+		RETURN TRUE;
+	END;
+END MODULE;

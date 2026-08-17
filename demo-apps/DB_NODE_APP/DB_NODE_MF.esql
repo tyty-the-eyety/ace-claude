@@ -1,0 +1,12 @@
+CREATE COMPUTE MODULE DB_NODE_MF_NotFound
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE custId CHARACTER InputRoot.JSON.Data.customerId;
+
+		SET OutputRoot.HTTPReplyHeader."Content-Type" = 'application/json';
+		SET OutputRoot.JSON.Data.found = FALSE;
+		SET OutputRoot.JSON.Data.customerId = custId;
+
+		RETURN TRUE;
+	END;
+END MODULE;

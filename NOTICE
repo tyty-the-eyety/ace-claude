@@ -1,0 +1,27 @@
+ace-claude
+Copyright 2026 Tyron
+
+This product includes software developed for authoring IBM App Connect
+Enterprise (ACE) artifacts with Claude Code.
+
+Licensed under the Apache License, Version 2.0. You may obtain a copy of the
+License at http://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+Third-party attribution
+--------------------------------------------------------------------------------
+
+This work is derived from the "ace-bob" skill published by Open Technologies
+for Integration, and introduced by Ben Thompson (Chief Architect, IBM App
+Connect Enterprise) and Sanjay Nagchowdhury (Technical Lead, IBM App Connect
+Enterprise) in the blog post below:
+
+    ace-bob:  https://github.com/ot4i/ace-bob
+    Blog:     "Using IBM Bob in the ACE Toolkit"
+              by Ben Thompson and Sanjay Nagchowdhury
+              https://community.ibm.com/community/user/blogs/ben-thompson1/2026/05/21/using-ibm-bob-in-the-ace-toolkit
+
+ace-bob is licensed under the MIT License, Copyright (c) 2026 Open
+Technologies for Integration. That original copyright and permission notice
+is retained in full in the file LICENSE-ace-bob and applies to the portions
+of this work derived from ace-bob.

@@ -1,0 +1,16 @@
+eclipse.preferences.version=1
+encoding/<project>=UTF-8
+encoding/POLICY_BACKEND_MF.msgflow=UTF-8
+encoding/POLICY_BACKEND_MF.esql=UTF-8
+encoding/POLICY_CLIENT_MF.msgflow=UTF-8
+encoding/POLICY_TIMER_MF.msgflow=UTF-8
+encoding/POLICY_TIMER_MF.esql=UTF-8
+encoding/POLICY_MQ_MF.msgflow=UTF-8
+encoding/POLICY_MQ_MF.esql=UTF-8
+encoding/POLICY_SECURE_MF.msgflow=UTF-8
+encoding/POLICY_SECURE_MF.esql=UTF-8
+encoding/POLICY_SECURECLIENT_MF.msgflow=UTF-8
+encoding/POLICY_TCPIPSERVER_MF.msgflow=UTF-8
+encoding/POLICY_TCPIPCLIENT_MF.msgflow=UTF-8
+encoding/POLICY_TCPIPCLIENT_MF.esql=UTF-8
+encoding/POLICY_PROXYCLIENT_MF.msgflow=UTF-8

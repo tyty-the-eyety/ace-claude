@@ -1,0 +1,89 @@
+-- Process module: validates the message and passes it through.
+-- To test the error path: PUT a message to INPUT.QUEUE with body starting with "FAIL".
+CREATE COMPUTE MODULE MQ_ERRHANDLING_MF_Process
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot = InputRoot;
+
+		DECLARE body CHARACTER CAST(InputRoot.BLOB.BLOB AS CHARACTER CCSID 1208);
+
+		IF LEFT(body, 4) = 'FAIL' THEN
+			THROW USER EXCEPTION VALUES('Validation failed: ' || body);
+		END IF;
+
+		SET OutputRoot.MQMD.Format         = 'MQSTR   ';
+		SET OutputRoot.MQMD.Encoding       = 546;
+		SET OutputRoot.MQMD.CodedCharSetId = 1208;
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+-- HandleError module: runs on the TryCatch catch path.
+-- Builds an XML error envelope containing the extracted exception details,
+-- the full ExceptionList for diagnostics, and the original message body.
+CREATE COMPUTE MODULE MQ_ERRHANDLING_MF_HandleError
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.CodedCharSetId = 1208;
+		SET OutputRoot.MQMD                      = InputRoot.MQMD;
+		SET OutputRoot.MQMD.Format               = 'MQSTR   ';
+		SET OutputRoot.MQMD.Encoding             = 546;
+		SET OutputRoot.MQMD.CodedCharSetId       = 1208;
+		-- Stamp original MsgId as CorrelId so the error can be traced back
+		SET OutputRoot.MQMD.CorrelId             = InputRoot.MQMD.MsgId;
+
+		-- Extract innermost error details from the ExceptionList
+		DECLARE errNumber INTEGER;
+		DECLARE errText   CHARACTER;
+		DECLARE errDetail CHARACTER '';
+		DECLARE errType   CHARACTER '';
+		CALL getLastError(InputExceptionList, errNumber, errText, errDetail, errType);
+
+		-- Build XML error envelope
+		SET OutputRoot.XMLNSC.ErrorMessage.ErrorInfo.Timestamp = CURRENT_TIMESTAMP;
+		SET OutputRoot.XMLNSC.ErrorMessage.ErrorInfo.FlowName  = MessageFlowLabel;
+		SET OutputRoot.XMLNSC.ErrorMessage.ErrorInfo.Code      = errNumber;
+		SET OutputRoot.XMLNSC.ErrorMessage.ErrorInfo.Text      = errText;
+		SET OutputRoot.XMLNSC.ErrorMessage.ErrorInfo.Details   = errDetail;
+
+		-- Store full ExceptionList for complete diagnostics
+		SET OutputRoot.XMLNSC.ErrorMessage.ErrorInfo.ExceptionList = InputExceptionList;
+
+		-- Preserve original message context for replay/investigation
+		SET OutputRoot.XMLNSC.ErrorMessage.OriginalMessage.MQMD = InputRoot.MQMD;
+		SET OutputRoot.XMLNSC.ErrorMessage.OriginalMessage.Body =
+				CAST(InputRoot.BLOB.BLOB AS CHARACTER CCSID 1208);
+
+		-- Explicitly propagate; DELETE NONE preserves input message for transactional safety
+		PROPAGATE TO TERMINAL 'out' DELETE NONE;
+		RETURN FALSE;
+	END;
+
+	-- Walks the ExceptionList tree to the deepest level, returning the
+	-- last error number, text, detail line, and type found.
+	-- Adapted from tyty-the-eyety/ibm-ace-tools ESB_ErrorHandler_LIB.
+	CREATE PROCEDURE getLastError(
+		IN  tree    REFERENCE,
+		OUT num     INTEGER,
+		OUT txt     CHARACTER,
+		OUT details CHARACTER,
+		OUT type    CHARACTER)
+	BEGIN
+		DECLARE ptr REFERENCE TO tree.*[1];
+		WHILE LASTMOVE(ptr) DO
+			IF ptr.Number IS NOT NULL THEN
+				SET num     = ptr.Number;
+				SET txt     = ptr.Text;
+				SET details = ptr.*[<].Text;
+				SET type    = CAST(ptr.*[<].Type AS CHARACTER);
+			END IF;
+			MOVE ptr LASTCHILD;
+		END WHILE;
+	END;
+
+END MODULE;

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:dfdl="http://www.ogf.org/dfdl/dfdl-1.0/"
+	xmlns:ibmDfdlExtn="http://www.ibm.com/dfdl/extensions"
+	xmlns:recSepFieldsFmt="http://www.ibm.com/dfdl/RecordSeparatedFieldFormat"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<xsd:import
+		namespace="http://www.ibm.com/dfdl/RecordSeparatedFieldFormat"
+		schemaLocation="IBMdefined/RecordSeparatedFieldFormat.xsd" />
+	<xsd:annotation>
+		<xsd:appinfo source="http://www.ogf.org/dfdl/">
+			<dfdl:format encoding="{$dfdl:encoding}" escapeSchemeRef="recSepFieldsFmt:RecordEscapeScheme" occursCountKind="fixed" nilValue="%ES;" nilKind="literalValue" useNilForDefault="no" ref="recSepFieldsFmt:RecordSeparatedFieldsFormat"/>
+		</xsd:appinfo>
+	</xsd:annotation>
+
+	<xsd:element ibmDfdlExtn:docRoot="true" name="Company"
+		dfdl:initiator="Company[" dfdl:terminator="]%CR;%LF;">
+		<xsd:complexType>
+			<xsd:sequence dfdl:separator="">
+				<xsd:element name="CompanyName" type="xsd:string"
+					dfdl:initiator="compName=" dfdl:terminator="%CR;%LF;">
+				</xsd:element>
+				<xsd:element dfdl:initiator="Employee("
+					dfdl:occursCountKind="implicit" maxOccurs="unbounded" name="Employee"
+					dfdl:terminator=")%CR;%LF;">
+					<xsd:complexType>
+						<xsd:sequence dfdl:initiatedContent="yes"
+							dfdl:separator="%#124;"
+							dfdl:separatorPolicy="suppressedAtEndLax">
+							<xsd:element dfdl:initiator="empNum="
+								name="EmpNo" type="xsd:integer" dfdl:textNumberPattern="#0"
+								ibmDfdlExtn:sampleValue="1" />
+							<xsd:element dfdl:initiator="dept=" nillable="true"
+								name="Dept" type="xsd:integer" ibmDfdlExtn:sampleValue="1"
+								dfdl:textNumberPattern="#0" />
+							<xsd:element default="body_value3"
+								dfdl:initiator="empName=" name="EmpName" type="xsd:string" />
+							<xsd:element dfdl:initiator="Addr:"
+								name="Address">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="StreetName"
+											type="xsd:string">
+										</xsd:element>
+										<xsd:element name="City"
+											type="xsd:string">
+										</xsd:element>
+										<xsd:element name="ZipCode"
+											type="xsd:string">
+										</xsd:element>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+							<xsd:element default="999-999-9999"
+								dfdl:initiator="tel=" name="Tel"
+								ibmDfdlExtn:sampleValue="999-999-9999">
+								<xsd:simpleType>
+									<xsd:restriction
+										base="xsd:string">
+										<xsd:pattern
+											value="\d{3}-\d{3}-\d{4}">
+										</xsd:pattern>
+									</xsd:restriction>
+								</xsd:simpleType>
+							</xsd:element>
+							<xsd:element dfdl:initiator="sal="
+								name="Salary" ibmDfdlExtn:sampleValue="1.0"
+								dfdl:textNumberPattern="#0.###">
+								<xsd:simpleType>
+									<xsd:restriction
+										base="xsd:decimal">
+										<xsd:totalDigits value="8"></xsd:totalDigits>
+										<xsd:fractionDigits value="2"></xsd:fractionDigits>
+									</xsd:restriction>
+								</xsd:simpleType>
+							</xsd:element>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+
+</xsd:schema>

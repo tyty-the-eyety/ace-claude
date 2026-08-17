@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="TCPIPServer" policyName="TcpServer5555" policyTemplate="">
+    <Port>5555</Port>
+    <MaximumConnections>10</MaximumConnections>
+    <ExpireConnectionSec>-1</ExpireConnectionSec>
+  </policy>
+</policies>

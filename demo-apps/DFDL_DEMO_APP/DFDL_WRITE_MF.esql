@@ -1,0 +1,25 @@
+CREATE COMPUTE MODULE DFDL_WRITE_MF_ToDfdl
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE jsonCompany REFERENCE TO InputRoot.JSON.Data.company;
+		DECLARE itemRef REFERENCE TO jsonCompany.employees.Item[1];
+		DECLARE i INTEGER 1;
+
+		SET OutputRoot.DFDL.Company.CompanyName = jsonCompany.name;
+
+		WHILE LASTMOVE(itemRef) DO
+			SET OutputRoot.DFDL.Company.Employee[i].EmpNo              = CAST(itemRef.empNo AS INTEGER);
+			SET OutputRoot.DFDL.Company.Employee[i].Dept               = CAST(itemRef.dept AS INTEGER);
+			SET OutputRoot.DFDL.Company.Employee[i].EmpName            = itemRef.name;
+			SET OutputRoot.DFDL.Company.Employee[i].Address.StreetName = itemRef.street;
+			SET OutputRoot.DFDL.Company.Employee[i].Address.City       = itemRef.city;
+			SET OutputRoot.DFDL.Company.Employee[i].Address.ZipCode    = itemRef.zip;
+			SET OutputRoot.DFDL.Company.Employee[i].Tel                = itemRef.tel;
+			SET OutputRoot.DFDL.Company.Employee[i].Salary             = CAST(itemRef.salary AS DECIMAL);
+			MOVE itemRef NEXTSIBLING REPEAT NAME;
+			SET i = i + 1;
+		END WHILE;
+
+		RETURN TRUE;
+	END;
+END MODULE;

@@ -1,0 +1,20 @@
+CREATE COMPUTE MODULE copy_msg_headers_Compute
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.MQMD       = InputRoot.MQMD;
+
+		-- Set standard output MQMD encoding fields
+		SET OutputRoot.MQMD.Format        = 'MQSTR   ';
+		SET OutputRoot.MQMD.Encoding      = 546;
+		SET OutputRoot.MQMD.CodedCharSetId = 1208;
+
+		-- Copy body (any domain)
+		DECLARE bodyRef REFERENCE TO InputRoot.*[<];
+		SET OutputRoot.{FIELDNAME(bodyRef)} = bodyRef;
+
+		RETURN TRUE;
+	END;
+
+END MODULE;

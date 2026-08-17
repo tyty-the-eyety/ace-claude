@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="JDBCProviders" policyName="DevPG" policyTemplate="">
+    <connectionUrlFormat>jdbc:postgresql://[serverName]:[portNumber]/[databaseName]?user=[user]&amp;password=[password]</connectionUrlFormat>
+    <connectionUrlFormatAttr1></connectionUrlFormatAttr1>
+    <connectionUrlFormatAttr2></connectionUrlFormatAttr2>
+    <connectionUrlFormatAttr3></connectionUrlFormatAttr3>
+    <connectionUrlFormatAttr4></connectionUrlFormatAttr4>
+    <connectionUrlFormatAttr5></connectionUrlFormatAttr5>
+    <databaseName>mydb</databaseName>
+    <databaseSchemaNames>useProvidedSchemaNames</databaseSchemaNames>
+    <databaseType>PostgreSQL</databaseType>
+    <databaseVersion>17</databaseVersion>
+    <description>PostgreSQL 17 on the homelab LXC (mydb)</description>
+    <environmentParms></environmentParms>
+    <jarsURL>/path/to/jdbc-drivers</jarsURL>
+    <jdbcProviderXASupport>FALSE</jdbcProviderXASupport>
+    <maxConnectionPoolSize>10</maxConnectionPoolSize>
+    <portNumber>5432</portNumber>
+    <securityIdentity>pgjdbc</securityIdentity>
+    <serverName>db.example.com</serverName>
+    <type4DatasourceClassName>org.postgresql.xa.PGXADataSource</type4DatasourceClassName>
+    <type4DriverClassName>org.postgresql.Driver</type4DriverClassName>
+    <useDeployedJars>FALSE</useDeployedJars>
+  </policy>
+</policies>

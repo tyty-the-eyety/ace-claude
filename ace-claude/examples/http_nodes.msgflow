@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EXAMPLE: HTTP Input, HTTP Request (WSRequest), HTTP Reply nodes
+  ===============================================================
+  Key points:
+    - HTTP Input  xmi:type = ComIbmWSInput.msgnode:FCMComposite_1
+    - HTTP Request xmi:type = ComIbmWSRequest.msgnode:FCMComposite_1
+    - HTTP Reply  xmi:type = ComIbmWSReply.msgnode:FCMComposite_1
+    - WSRequest MUST have: httpVersion="1.1"  protocol="TLS"  messageDomainProperty=
+    - messageDomainProperty on WSRequest parses the RESPONSE body (not responseDomainProperty — wrong)
+    - HTTP Input: URLSpecifier is the listening path, e.g. "/api/v1/orders"
+    - HTTP Input: messageDomainProperty="JSON" parses the request body automatically
+    - WSReply needs no special attributes; it routes back via LocalEnvironment
+    - Any Compute node feeding into WSReply MUST forward LocalEnvironment:
+        SET OutputLocalEnvironment = InputLocalEnvironment;
+    - HTTPRequest policy: policyUrl="{PolicyProject}:PolicyName" on WSRequest overrides
+      URL and/or injects vault credentials (see examples/policy/flows/POLICY_CLIENT_MF.msgflow)
+    - Inbound auth: securityProfileName="{PolicyProject}:Profile" + identityType="usernameAndPassword"
+      on HTTP Input (see examples/policy/flows/POLICY_SECURE_MF.msgflow)
+-->
+<ecore:EPackage xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:ComIbmWSInput.msgnode="ComIbmWSInput.msgnode"
+    xmlns:ComIbmWSRequest.msgnode="ComIbmWSRequest.msgnode"
+    xmlns:ComIbmWSReply.msgnode="ComIbmWSReply.msgnode"
+    xmlns:ComIbmCompute.msgnode="ComIbmCompute.msgnode"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:eflow="http://www.ibm.com/wbi/2005/eflow"
+    xmlns:utility="http://www.ibm.com/wbi/2005/eflow_utility"
+    nsURI="MY_FLOW.msgflow"
+    nsPrefix="MY_FLOW.msgflow">
+  <eClassifiers xmi:type="eflow:FCMComposite" name="FCMComposite_1" nodeLayoutStyle="RECTANGLE">
+    <eSuperTypes href="http://www.ibm.com/wbi/2005/eflow#//FCMBlock"/>
+    <translation xmi:type="utility:ConstantString" string="MY_FLOW"/>
+    <colorGraphic16 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/MY_APP/icons/full/obj16/MY_FLOW.gif"/>
+    <colorGraphic32 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/MY_APP/icons/full/obj30/MY_FLOW.gif"/>
+    <composition>
+
+      <!-- HTTP Input: URLSpecifier is the listening path.
+           messageDomainProperty="JSON" parses the request body into InputRoot.JSON.Data -->
+      <nodes xmi:type="ComIbmWSInput.msgnode:FCMComposite_1"
+          xmi:id="FCMComposite_1_1"
+          location="80,140"
+          URLSpecifier="/api/v1/my-endpoint"
+          messageDomainProperty="JSON">
+        <translation xmi:type="utility:ConstantString" string="/api/v1/my-endpoint"/>
+      </nodes>
+
+      <!-- Compute node: label is snake_case verb describing what it does.
+           computeMode only set when ESQL touches OutputLocalEnvironment or OutputDestination. -->
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1"
+          xmi:id="FCMComposite_1_2"
+          location="300,140"
+          computeExpression="esql://routine/#MY_FLOW_Transform.Main">
+        <translation xmi:type="utility:ConstantString" string="transform"/>
+      </nodes>
+
+      <!-- HTTP Request (WSRequest): ALL THREE attributes are mandatory.
+           httpVersion="1.1"      — HTTP 1.0 must never be used
+           protocol="TLS"         — SSL must never be used
+           messageDomainProperty  — parses the response body; NEVER use responseDomainProperty -->
+      <nodes xmi:type="ComIbmWSRequest.msgnode:FCMComposite_1"
+          xmi:id="FCMComposite_1_3"
+          location="520,140"
+          URLSpecifier="https://backend.example.com/api/endpoint"
+          httpVersion="1.1"
+          protocol="TLS"
+          messageDomainProperty="JSON">
+        <translation xmi:type="utility:ConstantString" string="https://backend.example.com/api/endpoint"/>
+      </nodes>
+
+      <!-- HTTP Reply: no special attributes needed -->
+      <nodes xmi:type="ComIbmWSReply.msgnode:FCMComposite_1"
+          xmi:id="FCMComposite_1_4"
+          location="760,140">
+        <translation xmi:type="utility:ConstantString" string="reply"/>
+      </nodes>
+
+      <!-- Happy path: Input → Transform → HTTP Request → Reply -->
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_1"
+          sourceNode="FCMComposite_1_1" sourceTerminalName="OutTerminal.out"
+          targetNode="FCMComposite_1_2" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_2"
+          sourceNode="FCMComposite_1_2" sourceTerminalName="OutTerminal.out"
+          targetNode="FCMComposite_1_3" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_3"
+          sourceNode="FCMComposite_1_3" sourceTerminalName="OutTerminal.out"
+          targetNode="FCMComposite_1_4" targetTerminalName="InTerminal.in"/>
+
+      <!--
+        Error path (wire when error handling is requested):
+        sourceNode="FCMComposite_1_1" sourceTerminalName="OutTerminal.catch"
+        routes to an error Compute node whose ESQL must set:
+          SET OutputLocalEnvironment = InputLocalEnvironment;
+          SET OutputLocalEnvironment.Destination.HTTP.ReplyStatusCode = 500;
+        and then connect to the same (or a separate) WSReply node.
+      -->
+
+    </composition>
+    <propertyOrganizer/>
+    <stickyBoard/>
+  </eClassifiers>
+</ecore:EPackage>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="Collector" policyName="Collector" policyTemplate="">
+    <queuePrefix/>
+    <collectionExpiry>60</collectionExpiry>
+  </policy>
+</policies>

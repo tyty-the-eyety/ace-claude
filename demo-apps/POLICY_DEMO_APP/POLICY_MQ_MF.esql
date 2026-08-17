@@ -1,0 +1,13 @@
+CREATE COMPUTE MODULE POLICY_MQ_MF_Compute
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+
+		SET OutputRoot.JSON.Data.queued = TRUE;
+		SET OutputRoot.JSON.Data.queue  = 'TEST.POLICY.Q';
+
+		RETURN TRUE;
+	END;
+
+END MODULE;

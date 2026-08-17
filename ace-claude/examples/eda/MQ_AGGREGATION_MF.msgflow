@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ComIbmMQInput.msgnode="ComIbmMQInput.msgnode" xmlns:ComIbmAggregateControl.msgnode="ComIbmAggregateControl.msgnode" xmlns:ComIbmAggregateRequest.msgnode="ComIbmAggregateRequest.msgnode" xmlns:ComIbmAggregateReply.msgnode="ComIbmAggregateReply.msgnode" xmlns:ComIbmCompute.msgnode="ComIbmCompute.msgnode" xmlns:ComIbmMQOutput.msgnode="ComIbmMQOutput.msgnode" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:eflow="http://www.ibm.com/wbi/2005/eflow" xmlns:utility="http://www.ibm.com/wbi/2005/eflow_utility" nsURI="MQ_AGGREGATION_MF.msgflow" nsPrefix="MQ_AGGREGATION_MF.msgflow">
+  <eClassifiers xmi:type="eflow:FCMComposite" name="FCMComposite_1" nodeLayoutStyle="RECTANGLE">
+    <eSuperTypes href="http://www.ibm.com/wbi/2005/eflow#//FCMBlock"/>
+    <translation xmi:type="utility:ConstantString" string="MQ_AGGREGATION_MF"/>
+    <colorGraphic16 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/MQ_AGGREGATION_APP/icons/full/obj16/MQ_AGGREGATION_MF.gif"/>
+    <colorGraphic32 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/MQ_AGGREGATION_APP/icons/full/obj30/MQ_AGGREGATION_MF.gif"/>
+    <composition>
+      <!-- Trigger -->
+      <nodes xmi:type="ComIbmMQInput.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_1" location="40,260" queueName="AGGREGATION.IN" messageDomainProperty="XMLNSC" policyUrl="{POLICY_DEMO_POLICIES}:DevQM">
+        <translation xmi:type="utility:ConstantString" string="AGGREGATION.IN"/>
+      </nodes>
+
+      <nodes xmi:type="ComIbmAggregateControl.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_2" location="240,260" aggregateName="{POLICY_DEMO_POLICIES}:Aggregation">
+        <translation xmi:type="utility:ConstantString" string="AggregateControl"/>
+      </nodes>
+
+      <!-- Leg A: tag -> MQOutput (request, new MsgId, ReplyToQ) -> AggregateRequest reads WrittenDestination -->
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_3" location="440,120" computeExpression="esql://routine/#MQ_AGGREGATION_MF_LegATag.Main">
+        <translation xmi:type="utility:ConstantString" string="LegA_Tag"/>
+      </nodes>
+      <nodes xmi:type="ComIbmMQOutput.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_5" location="640,120" queueName="LEGA.REQUEST" replyToQ="LEGA.REPLY" newMsgId="true" policyUrl="{POLICY_DEMO_POLICIES}:DevQM">
+        <translation xmi:type="utility:ConstantString" string="LEGA.REQUEST"/>
+      </nodes>
+      <nodes xmi:type="ComIbmAggregateRequest.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_4" location="840,120" folderName="LegA">
+        <translation xmi:type="utility:ConstantString" string="AggregateRequest_LegA"/>
+      </nodes>
+
+      <!-- Leg B: tag -> MQOutput (request, new MsgId, ReplyToQ) -> AggregateRequest reads WrittenDestination -->
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_6" location="440,400" computeExpression="esql://routine/#MQ_AGGREGATION_MF_LegBTag.Main">
+        <translation xmi:type="utility:ConstantString" string="LegB_Tag"/>
+      </nodes>
+      <nodes xmi:type="ComIbmMQOutput.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_8" location="640,400" queueName="LEGB.REQUEST" replyToQ="LEGB.REPLY" newMsgId="true" policyUrl="{POLICY_DEMO_POLICIES}:DevQM">
+        <translation xmi:type="utility:ConstantString" string="LEGB.REQUEST"/>
+      </nodes>
+      <nodes xmi:type="ComIbmAggregateRequest.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_7" location="840,400" folderName="LegB">
+        <translation xmi:type="utility:ConstantString" string="AggregateRequest_LegB"/>
+      </nodes>
+
+      <!-- Reply intake: separate MQInputs, one per leg's reply queue, both feeding AggregateReply.in -->
+      <nodes xmi:type="ComIbmMQInput.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_11" location="840,220" queueName="LEGA.REPLY" messageDomainProperty="XMLNSC" policyUrl="{POLICY_DEMO_POLICIES}:DevQM">
+        <translation xmi:type="utility:ConstantString" string="LEGA.REPLY"/>
+      </nodes>
+      <nodes xmi:type="ComIbmMQInput.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_12" location="840,300" queueName="LEGB.REPLY" messageDomainProperty="XMLNSC" policyUrl="{POLICY_DEMO_POLICIES}:DevQM">
+        <translation xmi:type="utility:ConstantString" string="LEGB.REPLY"/>
+      </nodes>
+
+      <nodes xmi:type="ComIbmAggregateReply.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_9" location="1040,260" aggregateName="{POLICY_DEMO_POLICIES}:Aggregation">
+        <translation xmi:type="utility:ConstantString" string="AggregateReply"/>
+      </nodes>
+
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_13" location="1240,260" computeExpression="esql://routine/#MQ_AGGREGATION_MF_BuildCombined.Main">
+        <translation xmi:type="utility:ConstantString" string="BuildCombined"/>
+      </nodes>
+      <nodes xmi:type="ComIbmMQOutput.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_10" location="1440,260" queueName="AGGREGATION.OUT" policyUrl="{POLICY_DEMO_POLICIES}:DevQM">
+        <translation xmi:type="utility:ConstantString" string="AGGREGATION.OUT"/>
+      </nodes>
+
+      <!-- Trigger -> Control, fan out to both legs, control signal to Reply -->
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_1" sourceNode="FCMComposite_1_1" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_2" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_2" sourceNode="FCMComposite_1_2" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_3" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_3" sourceNode="FCMComposite_1_2" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_6" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_4" sourceNode="FCMComposite_1_2" sourceTerminalName="OutTerminal.control" targetNode="FCMComposite_1_9" targetTerminalName="InTerminal.control"/>
+
+      <!-- Leg A request path: tag -> MQOutput -> AggregateRequest -->
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_5" sourceNode="FCMComposite_1_3" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_5" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_6" sourceNode="FCMComposite_1_5" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_4" targetTerminalName="InTerminal.in"/>
+
+      <!-- Leg B request path: tag -> MQOutput -> AggregateRequest -->
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_8" sourceNode="FCMComposite_1_6" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_8" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_9" sourceNode="FCMComposite_1_8" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_7" targetTerminalName="InTerminal.in"/>
+
+      <!-- Reply intake -> AggregateReply.in (both legs) -->
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_12" sourceNode="FCMComposite_1_11" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_9" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_13" sourceNode="FCMComposite_1_12" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_9" targetTerminalName="InTerminal.in"/>
+
+      <!-- Combined reply: AggregateReply -> BuildCombined (maps ComIbmAggregateReplyBody folders to XMLNSC) -> out -->
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_11" sourceNode="FCMComposite_1_9" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_13" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_14" sourceNode="FCMComposite_1_13" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_10" targetTerminalName="InTerminal.in"/>
+    </composition>
+    <propertyOrganizer/>
+    <stickyBoard/>
+  </eClassifiers>
+</ecore:EPackage>

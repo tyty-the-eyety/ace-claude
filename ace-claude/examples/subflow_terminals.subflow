@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EXAMPLE: Subflow with correct boundary terminal xmi:ids
+  ========================================================
+  Key points:
+    - File extension MUST be .subflow (not .msgflow)
+    - FCMSource (input boundary):  xmi:id="InTerminal.Input"   — exact value, no variation
+    - FCMSink   (output boundary): xmi:id="OutTerminal.Output" — exact value, no variation
+    - Using any other xmi:id (e.g. FCMComposite_1_1) causes "Can not locate Input terminal" at runtime
+    - nsURI and nsPrefix must match the .subflow filename exactly
+    - In a parent .msgflow referencing this subflow:
+        xmlns:my_subflow.subflow="my_subflow.subflow"
+        xmi:type="my_subflow.subflow:FCMComposite_1"
+      Do NOT set subflowImplFile on subflow nodes in the parent — only valid for .msgflow subflows
+      and causes a "User Defined Property Reference Problem" warning when the target is a .subflow
+-->
+<ecore:EPackage xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:ComIbmCompute.msgnode="ComIbmCompute.msgnode"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:eflow="http://www.ibm.com/wbi/2005/eflow"
+    xmlns:utility="http://www.ibm.com/wbi/2005/eflow_utility"
+    nsURI="my_subflow.subflow"
+    nsPrefix="my_subflow.subflow">
+  <eClassifiers xmi:type="eflow:FCMComposite" name="FCMComposite_1" useDefaults="true" nodeLayoutStyle="RECTANGLE">
+    <eSuperTypes href="http://www.ibm.com/wbi/2005/eflow#//FCMBlock"/>
+    <translation xmi:type="utility:ConstantString" string="my_subflow"/>
+    <colorGraphic16 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/MY_APP/icons/full/obj16/my_subflow.gif"/>
+    <colorGraphic32 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/MY_APP/icons/full/obj30/my_subflow.gif"/>
+    <composition>
+
+      <!-- Input boundary terminal: xmi:id MUST be exactly "InTerminal.Input" -->
+      <nodes xmi:type="eflow:FCMSource" xmi:id="InTerminal.Input" location="20,60">
+        <translation xmi:type="utility:ConstantString" string="Input"/>
+      </nodes>
+
+      <!-- Internal node(s) — replace with whatever the subflow needs -->
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1"
+          xmi:id="FCMComposite_1_1"
+          location="260,60"
+          computeExpression="esql://routine/#my_subflow_Compute.Main">
+        <translation xmi:type="utility:ConstantString" string="my_subflow_compute"/>
+      </nodes>
+
+      <!-- Output boundary terminal: xmi:id MUST be exactly "OutTerminal.Output" -->
+      <nodes xmi:type="eflow:FCMSink" xmi:id="OutTerminal.Output" location="500,60">
+        <translation xmi:type="utility:ConstantString" string="Output"/>
+      </nodes>
+
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_1"
+          sourceNode="InTerminal.Input"   sourceTerminalName="OutTerminal.out"
+          targetNode="FCMComposite_1_1"   targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_2"
+          sourceNode="FCMComposite_1_1"   sourceTerminalName="OutTerminal.out"
+          targetNode="OutTerminal.Output" targetTerminalName="InTerminal.in"/>
+
+    </composition>
+    <propertyOrganizer/>
+    <stickyBoard/>
+  </eClassifiers>
+</ecore:EPackage>

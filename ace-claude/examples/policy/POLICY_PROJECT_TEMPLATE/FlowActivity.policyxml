@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="ActivityLog" policyName="FlowActivity" policyTemplate="ActivityLogTemplate">
+    <enabled>true</enabled>
+    <filter/>
+    <minSeverityLevel>Informational</minSeverityLevel>
+    <fileName>/tmp/ace-flowactivity.log</fileName>
+    <numberOfLogs>4</numberOfLogs>
+    <maxAgeMins>0</maxAgeMins>
+    <maxFileSizeMb>25</maxFileSizeMb>
+    <formatEntries>true</formatEntries>
+    <elkLog>false</elkLog>
+    <elkConnections/>
+    <consoleLog>false</consoleLog>
+  </policy>
+</policies>

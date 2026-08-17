@@ -1,0 +1,16 @@
+CREATE COMPUTE MODULE POLICY_BACKEND_MF_Compute
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE requestedBy CHARACTER InputRoot.JSON.Data.caller;
+
+		SET OutputRoot.Properties.ContentType = 'application/json';
+
+		SET OutputRoot.JSON.Data.source = 'backend-via-policy';
+		SET OutputRoot.JSON.Data.caller = requestedBy;
+		SET OutputRoot.JSON.Data.status = 'success';
+
+		RETURN TRUE;
+	END;
+
+END MODULE;

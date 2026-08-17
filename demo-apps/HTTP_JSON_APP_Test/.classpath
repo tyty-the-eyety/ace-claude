@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src/main/java"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/5"/>
+	<classpathentry kind="var" path="COMMON_CLASSES_HOME/IntegrationTest.jar"/>
+	<classpathentry kind="var" path="COMMON_CLASSES_HOME/hamcrest-2.2.jar"/>
+	<classpathentry kind="con" path="com.ibm.etools.mft.unittest.integrationTestDependencies"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

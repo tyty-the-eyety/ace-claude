@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ComIbmWSInput.msgnode="ComIbmWSInput.msgnode" xmlns:ComIbmDatabaseRetrieve.msgnode="ComIbmDatabaseRetrieve.msgnode" xmlns:ComIbmCompute.msgnode="ComIbmCompute.msgnode" xmlns:ComIbmWSReply.msgnode="ComIbmWSReply.msgnode" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:eflow="http://www.ibm.com/wbi/2005/eflow" xmlns:utility="http://www.ibm.com/wbi/2005/eflow_utility" nsURI="DB_NODE_MF.msgflow" nsPrefix="DB_NODE_MF.msgflow">
+  <eClassifiers xmi:type="eflow:FCMComposite" name="FCMComposite_1" nodeLayoutStyle="RECTANGLE">
+    <eSuperTypes href="http://www.ibm.com/wbi/2005/eflow#//FCMBlock"/>
+    <translation xmi:type="utility:ConstantString" string="DB_NODE_MF"/>
+    <colorGraphic16 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/DB_NODE_APP/icons/full/obj16/DB_NODE_MF.gif"/>
+    <colorGraphic32 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/DB_NODE_APP/icons/full/obj30/DB_NODE_MF.gif"/>
+    <composition>
+      <nodes xmi:type="ComIbmWSInput.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_1" location="80,160" URLSpecifier="/dbnode/customer" messageDomainProperty="JSON">
+        <translation xmi:type="utility:ConstantString" string="POST /dbnode/customer"/>
+      </nodes>
+
+      <!-- DatabaseRetrieve: looks up customers.tier via the DevPG JDBCProviders policy,
+           copies the input message and writes the retrieved column into it.
+           Table rows are REPEATED elements named after the table (queryElements /
+           dataElements), row values as attributes — same msgflow convention as
+           Route's filterTable and Collector's eventHandlerPropertyTable. -->
+      <nodes xmi:type="ComIbmDatabaseRetrieve.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_2" location="360,160" dataSourceName="{POLICY_DEMO_POLICIES}:DevPG" copyMessage="true" sqlQuery="SELECT customers.tier FROM customers WHERE customers.cust_id = ? ORDER BY customers.tier ASC">
+        <translation xmi:type="utility:ConstantString" string="LookupTier"/>
+        <!-- sqlQuery is executed verbatim (Toolkit generates it from this grid; hand-authored here).
+             Rows with operator ASC/DESC are the SELECT-column rows; other operators are WHERE
+             predicates whose Element XPath values bind the ? markers in row order. -->
+        <queryElements tableName="customers" columnName="tier" operator="ASC"/>
+        <queryElements tableName="customers" columnName="cust_id" operator="=" valueType="Element" value="$Body/Data/customerId"/>
+        <dataElements columnName="customers.tier" messageElement="$OutputRoot/JSON/Data/tier"/>
+      </nodes>
+
+      <nodes xmi:type="ComIbmWSReply.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_3" location="680,100">
+        <translation xmi:type="utility:ConstantString" string="ReplyFound"/>
+      </nodes>
+
+      <!-- keyNotFound is a primary semantic terminal of DatabaseRetrieve (not error handling) -->
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_4" location="500,260" computeExpression="esql://routine/#DB_NODE_MF_NotFound.Main" computeMode="message">
+        <translation xmi:type="utility:ConstantString" string="NotFound"/>
+      </nodes>
+      <nodes xmi:type="ComIbmWSReply.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_5" location="680,260">
+        <translation xmi:type="utility:ConstantString" string="ReplyNotFound"/>
+      </nodes>
+
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_1" sourceNode="FCMComposite_1_1" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_2" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_2" sourceNode="FCMComposite_1_2" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_3" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_3" sourceNode="FCMComposite_1_2" sourceTerminalName="OutTerminal.keyNotFound" targetNode="FCMComposite_1_4" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_4" sourceNode="FCMComposite_1_4" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_5" targetTerminalName="InTerminal.in"/>
+    </composition>
+    <propertyOrganizer/>
+    <stickyBoard/>
+  </eClassifiers>
+</ecore:EPackage>

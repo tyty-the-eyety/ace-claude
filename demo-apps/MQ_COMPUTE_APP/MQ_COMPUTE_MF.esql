@@ -1,0 +1,18 @@
+CREATE COMPUTE MODULE MQ_COMPUTE_MF_Compute
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Copy Properties header
+		SET OutputRoot.Properties = InputRoot.Properties;
+
+		-- Copy MQMD
+		SET OutputRoot.MQMD = InputRoot.MQMD;
+
+		-- Copy body (works for any message domain: XMLNSC, BLOB, MRM, JSON, etc.)
+		DECLARE bodyRef REFERENCE TO InputRoot.*[<];
+		SET OutputRoot.{FIELDNAME(bodyRef)} = bodyRef;
+
+		RETURN TRUE;
+	END;
+
+END MODULE;

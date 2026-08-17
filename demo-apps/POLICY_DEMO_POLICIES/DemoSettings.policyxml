@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="UserDefined" policyName="DemoSettings" policyTemplate="">
+    <environmentLabel>dev</environmentLabel>
+    <backendTimeoutSecs>10</backendTimeoutSecs>
+  </policy>
+</policies>

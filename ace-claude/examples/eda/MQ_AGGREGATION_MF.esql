@@ -1,0 +1,39 @@
+CREATE COMPUTE MODULE MQ_AGGREGATION_MF_LegATag
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot = InputRoot;
+		SET OutputRoot.XMLNSC.Msg.Leg = 'A';
+		RETURN TRUE;
+	END;
+END MODULE;
+
+CREATE COMPUTE MODULE MQ_AGGREGATION_MF_LegBTag
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot = InputRoot;
+		SET OutputRoot.XMLNSC.Msg.Leg = 'B';
+		RETURN TRUE;
+	END;
+END MODULE;
+
+CREATE COMPUTE MODULE MQ_AGGREGATION_MF_BuildCombined
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE aggRef    REFERENCE TO InputRoot.ComIbmAggregateReplyBody;
+		DECLARE folderRef REFERENCE TO aggRef.*[1];
+		DECLARE i         INTEGER 1;
+
+		SET OutputRoot.XMLNSC.Combined.OrderId    = aggRef.LegA.XMLNSC.Msg.OrderId;
+		SET OutputRoot.XMLNSC.Combined.LegAResult = aggRef.LegA.XMLNSC.Msg.Result;
+		SET OutputRoot.XMLNSC.Combined.LegBResult = aggRef.LegB.XMLNSC.Msg.Result;
+
+		-- record the folder names actually present, so a path mismatch is diagnosable from the output message
+		WHILE LASTMOVE(folderRef) DO
+			SET OutputRoot.XMLNSC.Combined.Folders.Folder[i] = FIELDNAME(folderRef);
+			MOVE folderRef NEXTSIBLING;
+			SET i = i + 1;
+		END WHILE;
+
+		RETURN TRUE;
+	END;
+END MODULE;

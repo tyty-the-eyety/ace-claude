@@ -1,0 +1,313 @@
+-- ============================================================
+-- ESQL PATTERNS REFERENCE
+-- ============================================================
+-- This file contains correct, annotated ESQL patterns for
+-- common ACE development tasks. Read relevant sections before
+-- writing new ESQL modules.
+-- ============================================================
+
+
+-- ============================================================
+-- PATTERN 1: DECLARE placement rules
+-- ============================================================
+-- InputRoot references and simple variables: declare at the top
+-- before any executable statement (SET, CALL, IF, WHILE).
+-- OutputRoot references: MUST be declared AFTER the output path
+-- has been created by a preceding SET or CREATE LASTCHILD.
+-- EXTERNAL variables: declared at file scope, shared across ALL
+-- ESQL files in the same ACE application — declare once only.
+
+DECLARE systemEnv EXTERNAL CHARACTER 'DEV';  -- file scope, app-wide
+
+CREATE COMPUTE MODULE Pattern_DeclareOrder
+
+    CREATE FUNCTION Main() RETURNS BOOLEAN
+    BEGIN
+        -- InputRoot refs and simple vars: at the top, before any SET
+        DECLARE inRef    REFERENCE TO InputRoot.XMLNSC.Order;
+        DECLARE counter  INTEGER 0;
+        DECLARE sapId    CHARACTER inRef.Header.SapId;  -- init from input ref is fine here
+
+        -- First SET creates the output path
+        SET OutputRoot.XMLNSC.Result.Header.Id = inRef.Header.Id;
+
+        -- OutputRoot ref: declared AFTER the tree exists
+        DECLARE outRef REFERENCE TO OutputRoot.XMLNSC.Result;
+        SET outRef.Body.Field = inRef.Body.Field;
+
+        RETURN TRUE;
+    END;
+
+END MODULE;
+
+
+-- ============================================================
+-- PATTERN 2: Repeating elements — WHILE LASTMOVE + NEXTSIBLING
+-- ============================================================
+-- All loop variable DECLAREs belong at the top of the procedure.
+-- Declare nested references outside the loop; MOVE them inside.
+-- Use NEXTSIBLING REPEAT NAME to advance through siblings of the same element name.
+-- JSON arrays (verified 2026-07-05): a bare [i] on a named output path does
+-- NOT build a JSON array — it emits repeated object keys (invalid JSON).
+-- CREATE FIELD ... IDENTITY (JSON.Array)name first, then set anonymous
+-- Item[i] children. Nested arrays need their own (JSON.Array) per parent.
+
+CREATE COMPUTE MODULE Pattern_RepeatingElements
+
+    CREATE FUNCTION Main() RETURNS BOOLEAN
+    BEGIN
+        DECLARE ns    NAMESPACE 'urn:example:order:v1';
+        DECLARE inRef REFERENCE TO InputRoot.XMLNSC.ns:Order;
+
+        -- Output path created by first SET; ref declared after
+        SET OutputRoot.JSON.Data.result.orderId = inRef.ns:OrderId;
+        DECLARE outRef REFERENCE TO OutputRoot.JSON.Data.result;
+
+        -- All loop variables declared at the top of the block
+        DECLARE itemIdx   INTEGER 0;
+        DECLARE varIdx    INTEGER 0;
+        DECLARE lineTotal DECIMAL;
+        DECLARE varRef    REFERENCE TO inRef;     -- placeholder, repositioned in loop
+        DECLARE itemRef   REFERENCE TO inRef.ns:Items.ns:Item[1];
+
+        -- items must be a JSON.Array; bare [i] would emit repeated "items" keys
+        CREATE FIELD outRef.items IDENTITY (JSON.Array)items;
+
+        WHILE LASTMOVE(itemRef) DO
+            SET itemIdx  = itemIdx + 1;
+            SET varIdx   = 0;
+            SET lineTotal = CAST(itemRef.ns:Qty AS DECIMAL) * CAST(itemRef.ns:Price AS DECIMAL);
+
+            SET outRef.items.Item[itemIdx].sku   = itemRef.ns:SKU;
+            SET outRef.items.Item[itemIdx].total = lineTotal;
+
+            -- Nested array: each item gets its own (JSON.Array) attributes field
+            CREATE FIELD outRef.items.Item[itemIdx].attributes IDENTITY (JSON.Array)attributes;
+
+            -- Nested loop: reposition varRef inside the outer loop
+            MOVE varRef TO itemRef.ns:Variants.ns:Variant[1];
+            WHILE LASTMOVE(varRef) DO
+                SET varIdx = varIdx + 1;
+                SET outRef.items.Item[itemIdx].attributes.Item[varIdx].key   = varRef.ns:Attribute;
+                SET outRef.items.Item[itemIdx].attributes.Item[varIdx].value = varRef.ns:Value;
+                MOVE varRef NEXTSIBLING REPEAT NAME;
+            END WHILE;
+
+            MOVE itemRef NEXTSIBLING REPEAT NAME;
+        END WHILE;
+
+        RETURN TRUE;
+    END;
+
+END MODULE;
+
+
+-- ============================================================
+-- PATTERN 3: FOR loop over repeating source elements
+-- ============================================================
+-- FOR ... AS ... IN source[] DO is cleaner when you only need
+-- to read from the source and don't need index-based navigation.
+
+CREATE COMPUTE MODULE Pattern_ForLoop
+
+    CREATE FUNCTION Main() RETURNS BOOLEAN
+    BEGIN
+        DECLARE inRef   REFERENCE TO InputRoot.XMLNSC.Wrapper.Records;
+        DECLARE counter INTEGER 0;
+
+        -- CREATE LASTCHILD ensures the path exists; ref declared immediately after
+        CREATE LASTCHILD OF OutputRoot.XMLNSC.Output.Items NAME 'Item';
+        DECLARE outItem REFERENCE TO OutputRoot.XMLNSC.Output.Items.Item;
+
+        FOR source AS inRef.Record[] DO
+            IF counter <> 0 THEN
+                CREATE NEXTSIBLING OF outItem AS outItem REPEAT;
+                -- NOTE: no MOVE after CREATE NEXTSIBLING...REPEAT
+                -- The CREATE already repositions outItem to the new element
+            END IF;
+            SET outItem.Id    = source.Id;
+            SET outItem.Value = source.Value;
+            SET counter = counter + 1;
+        END FOR;
+
+        RETURN TRUE;
+    END;
+
+END MODULE;
+
+
+-- ============================================================
+-- PATTERN 4: Datetime formatting — always HH (24-hour)
+-- ============================================================
+-- hh = 12-hour clock (WRONG — silent data error for PM times)
+-- HH = 24-hour clock (CORRECT)
+-- Preferred: use FORMAT 'IU' for ISO 8601 via CURRENT_TIMESTAMP
+
+CREATE COMPUTE MODULE Pattern_Datetime
+
+    CREATE FUNCTION Main() RETURNS BOOLEAN
+    BEGIN
+        DECLARE outRef REFERENCE TO InputRoot;  -- placeholder
+
+        SET OutputRoot.XMLNSC.Msg.Ts = 'placeholder';
+        MOVE outRef TO OutputRoot.XMLNSC.Msg;
+
+        -- Preferred: ISO 8601 via built-in token
+        SET outRef.CreatedAt = CAST(CURRENT_TIMESTAMP AS CHARACTER FORMAT 'IU');
+
+        -- Alternative: manual ISO 8601 — use HH not hh
+        SET outRef.CreatedAt = CAST(CURRENT_TIMESTAMP AS CHARACTER FORMAT 'yyyy-MM-dd''T''HH:mm:ss''Z''');
+
+        -- WRONG — hh gives 01:05 for 13:05
+        -- SET outRef.CreatedAt = CAST(CURRENT_TIMESTAMP AS CHARACTER FORMAT 'yyyy-MM-dd''T''hh:mm:ss''Z''');
+
+        RETURN TRUE;
+    END;
+
+END MODULE;
+
+
+-- ============================================================
+-- PATTERN 5: Error handling — getLastError + error envelope
+-- ============================================================
+-- Used in error Compute nodes wired to catch terminals.
+-- Always: copy MQMD, stamp CorrelId, walk ExceptionList to deepest error.
+-- Use PROPAGATE TO TERMINAL 'out' DELETE NONE + RETURN FALSE.
+
+CREATE COMPUTE MODULE Pattern_ErrorHandler
+
+    CREATE FUNCTION Main() RETURNS BOOLEAN
+    BEGIN
+        -- All DECLAREs before any SET
+        DECLARE errNumber   INTEGER;
+        DECLARE errText     CHARACTER;
+        DECLARE errDetail   CHARACTER '';
+        DECLARE errType     CHARACTER '';
+
+        SET OutputRoot.Properties.CodedCharSetId = 1208;
+        SET OutputRoot.MQMD                      = InputRoot.MQMD;
+        SET OutputRoot.MQMD.Format               = 'MQSTR   ';
+        SET OutputRoot.MQMD.Encoding             = 546;
+        SET OutputRoot.MQMD.CodedCharSetId       = 1208;
+        SET OutputRoot.MQMD.CorrelId             = InputRoot.MQMD.MsgId;
+
+        CALL getLastError(InputExceptionList, errNumber, errText, errDetail, errType);
+
+        SET OutputRoot.XMLNSC.ErrorMessage.ErrorInfo.Timestamp    = CURRENT_TIMESTAMP;
+        SET OutputRoot.XMLNSC.ErrorMessage.ErrorInfo.FlowName     = MessageFlowLabel;
+        SET OutputRoot.XMLNSC.ErrorMessage.ErrorInfo.Code         = errNumber;
+        SET OutputRoot.XMLNSC.ErrorMessage.ErrorInfo.Text         = errText;
+        SET OutputRoot.XMLNSC.ErrorMessage.ErrorInfo.Details      = errDetail;
+        SET OutputRoot.XMLNSC.ErrorMessage.ErrorInfo.ExceptionList = InputExceptionList;
+        SET OutputRoot.XMLNSC.ErrorMessage.OriginalMessage.MQMD   = InputRoot.MQMD;
+        SET OutputRoot.XMLNSC.ErrorMessage.OriginalMessage.Body   =
+                CAST(InputRoot.BLOB.BLOB AS CHARACTER CCSID 1208);
+
+        PROPAGATE TO TERMINAL 'out' DELETE NONE;
+        RETURN FALSE;
+    END;
+
+    CREATE PROCEDURE getLastError(
+        IN  tree    REFERENCE,
+        OUT num     INTEGER,
+        OUT txt     CHARACTER,
+        OUT details CHARACTER,
+        OUT type    CHARACTER)
+    BEGIN
+        DECLARE ptr REFERENCE TO tree.*[1];
+        WHILE LASTMOVE(ptr) DO
+            IF ptr.Number IS NOT NULL THEN
+                SET num     = ptr.Number;
+                SET txt     = ptr.Text;
+                SET details = ptr.*[<].Text;
+                SET type    = CAST(ptr.*[<].Type AS CHARACTER);
+            END IF;
+            MOVE ptr LASTCHILD;
+        END WHILE;
+    END;
+
+END MODULE;
+
+
+-- ============================================================
+-- PATTERN 6: HTTP error handler — with LocalEnvironment
+-- ============================================================
+-- For flows using WSReply (HTTP), the error Compute MUST:
+--   1. Copy InputLocalEnvironment so WSReply can route the response
+--   2. Set the HTTP status code in OutputLocalEnvironment
+--   3. Set computeMode="destinationAndMessage" on the Compute node in the msgflow
+
+CREATE COMPUTE MODULE Pattern_HttpErrorHandler
+
+    CREATE FUNCTION Main() RETURNS BOOLEAN
+    BEGIN
+        DECLARE errNumber INTEGER;
+        DECLARE errText   CHARACTER;
+        DECLARE errDetail CHARACTER '';
+        DECLARE errType   CHARACTER '';
+
+        -- Must forward LocalEnvironment so WSReply knows which HTTP connection to use
+        SET OutputLocalEnvironment = InputLocalEnvironment;
+        SET OutputLocalEnvironment.Destination.HTTP.ReplyStatusCode = 500;
+        SET OutputRoot.Properties.ContentType = 'application/json';
+
+        CALL getLastError(InputExceptionList, errNumber, errText, errDetail, errType);
+
+        SET OutputRoot.JSON.Data.error.status  = 'ERROR';
+        SET OutputRoot.JSON.Data.error.code    = errNumber;
+        SET OutputRoot.JSON.Data.error.message = errText;
+
+        PROPAGATE TO TERMINAL 'out' DELETE NONE;
+        RETURN FALSE;
+    END;
+
+    CREATE PROCEDURE getLastError(
+        IN  tree    REFERENCE,
+        OUT num     INTEGER,
+        OUT txt     CHARACTER,
+        OUT details CHARACTER,
+        OUT type    CHARACTER)
+    BEGIN
+        DECLARE ptr REFERENCE TO tree.*[1];
+        WHILE LASTMOVE(ptr) DO
+            IF ptr.Number IS NOT NULL THEN
+                SET num     = ptr.Number;
+                SET txt     = ptr.Text;
+                SET details = ptr.*[<].Text;
+                SET type    = CAST(ptr.*[<].Type AS CHARACTER);
+            END IF;
+            MOVE ptr LASTCHILD;
+        END WHILE;
+    END;
+
+END MODULE;
+
+
+-- ============================================================
+-- PATTERN 7: Namespace-qualified XML mapping (XMLNSC)
+-- ============================================================
+-- Declare the namespace alias once at the top of the module.
+-- Use it on every path segment in the XMLNSC tree.
+-- For OutputRoot refs: first SET creates the path, then MOVE the ref.
+
+CREATE COMPUTE MODULE Pattern_NamespaceMapping
+
+    CREATE FUNCTION Main() RETURNS BOOLEAN
+    BEGIN
+        DECLARE ns_in  NAMESPACE 'urn:example:source:v1';
+        DECLARE ns_out NAMESPACE 'urn:example:target:v2';
+        DECLARE inRef  REFERENCE TO InputRoot.XMLNSC.ns_in:Order;
+        DECLARE xmlRef REFERENCE TO OutputRoot;  -- placeholder for OutputRoot ref
+
+        -- First SET creates the output path
+        SET OutputRoot.XMLNSC.ns_out:Result.ns_out:Header.ns_out:Id = inRef.ns_in:OrderId;
+        -- Now reposition the placeholder ref
+        MOVE xmlRef TO OutputRoot.XMLNSC.ns_out:Result;
+
+        SET xmlRef.ns_out:Header.ns_out:Source = 'INTEGRATION';
+        SET xmlRef.ns_out:Body.ns_out:Amount   = CAST(inRef.ns_in:Total AS DECIMAL);
+
+        RETURN TRUE;
+    END;
+
+END MODULE;

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="JDBCProviders" policyName="DevMySQL" policyTemplate="MySQL">
+    <connectionUrlFormat>jdbc:mysql://[serverName]:[portNumber]/[databaseName]?user=[user]&amp;password=[password]</connectionUrlFormat>
+    <connectionUrlFormatAttr1></connectionUrlFormatAttr1>
+    <connectionUrlFormatAttr2></connectionUrlFormatAttr2>
+    <connectionUrlFormatAttr3></connectionUrlFormatAttr3>
+    <connectionUrlFormatAttr4></connectionUrlFormatAttr4>
+    <connectionUrlFormatAttr5></connectionUrlFormatAttr5>
+    <databaseName>DEVDB</databaseName>
+    <databaseSchemaNames>useProvidedSchemaNames</databaseSchemaNames>
+    <databaseType>MySQL</databaseType>
+    <databaseVersion>5.7</databaseVersion>
+    <description>Dev MySQL provider (no live DB in this environment)</description>
+    <environmentParms></environmentParms>
+    <jarsURL>default_Path</jarsURL>
+    <jdbcProviderXASupport>FALSE</jdbcProviderXASupport>
+    <maxConnectionPoolSize>0</maxConnectionPoolSize>
+    <portNumber>3306</portNumber>
+    <securityIdentity>default_User@default_Server</securityIdentity>
+    <serverName>localhost</serverName>
+    <type4DatasourceClassName>com.mysql.jdbc.jdbc2.optional.MysqlXADataSource</type4DatasourceClassName>
+    <type4DriverClassName>com.mysql.jdbc.Driver</type4DriverClassName>
+    <useDeployedJars>FALSE</useDeployedJars>
+  </policy>
+</policies>

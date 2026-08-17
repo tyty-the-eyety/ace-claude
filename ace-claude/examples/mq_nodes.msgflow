@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EXAMPLE: MQ Input and MQ Output nodes
+  ======================================
+  Key points:
+    - Root element is ecore:EPackage with the exact namespace URIs shown below
+    - nsURI and nsPrefix must match the .msgflow filename exactly
+    - pluginId must match the ACE Application project name
+    - MQ Input: use messageDomainProperty="XMLNSC" (or JSON/BLOB) — NEVER messageDomain=
+    - MQ Output: no domain property needed
+    - Terminal names: OutTerminal.out / InTerminal.in for the happy path
+    - Catch terminal: OutTerminal.catch on MQ Input
+    - Node labels: use the queue name as the ConstantString label
+    - MQEndpoint policy: add policyUrl="{PolicyProject}:PolicyName" to MQ Input/Output
+      to supply the queue manager connection (see examples/policy/flows/POLICY_MQ_MF.msgflow)
+-->
+<ecore:EPackage xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:ComIbmMQInput.msgnode="ComIbmMQInput.msgnode"
+    xmlns:ComIbmMQOutput.msgnode="ComIbmMQOutput.msgnode"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:eflow="http://www.ibm.com/wbi/2005/eflow"
+    xmlns:utility="http://www.ibm.com/wbi/2005/eflow_utility"
+    nsURI="MY_FLOW.msgflow"
+    nsPrefix="MY_FLOW.msgflow">
+  <eClassifiers xmi:type="eflow:FCMComposite" name="FCMComposite_1" nodeLayoutStyle="RECTANGLE">
+    <eSuperTypes href="http://www.ibm.com/wbi/2005/eflow#//FCMBlock"/>
+    <translation xmi:type="utility:ConstantString" string="MY_FLOW"/>
+    <colorGraphic16 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/MY_APP/icons/full/obj16/MY_FLOW.gif"/>
+    <colorGraphic32 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/MY_APP/icons/full/obj30/MY_FLOW.gif"/>
+    <composition>
+
+      <!-- MQ Input: messageDomainProperty sets the parser (Input Message Parsing tab).
+           NEVER use messageDomain= — that goes to the wrong tab and is ignored. -->
+      <nodes xmi:type="ComIbmMQInput.msgnode:FCMComposite_1"
+          xmi:id="FCMComposite_1_1"
+          location="80,140"
+          queueName="MY.INPUT.QUEUE"
+          messageDomainProperty="XMLNSC">
+        <translation xmi:type="utility:ConstantString" string="MY.INPUT.QUEUE"/>
+      </nodes>
+
+      <!-- MQ Output: no domain property required -->
+      <nodes xmi:type="ComIbmMQOutput.msgnode:FCMComposite_1"
+          xmi:id="FCMComposite_1_2"
+          location="400,140"
+          queueName="MY.OUTPUT.QUEUE">
+        <translation xmi:type="utility:ConstantString" string="MY.OUTPUT.QUEUE"/>
+      </nodes>
+
+      <!-- Happy path connection: out → in -->
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_1"
+          sourceNode="FCMComposite_1_1" sourceTerminalName="OutTerminal.out"
+          targetNode="FCMComposite_1_2" targetTerminalName="InTerminal.in"/>
+
+      <!--
+        Error path (wire when error handling is requested):
+        sourceTerminalName="OutTerminal.catch" on the MQ Input node
+        connects to an error Compute node's InTerminal.in
+      -->
+
+    </composition>
+    <propertyOrganizer/>
+    <stickyBoard/>
+  </eClassifiers>
+</ecore:EPackage>

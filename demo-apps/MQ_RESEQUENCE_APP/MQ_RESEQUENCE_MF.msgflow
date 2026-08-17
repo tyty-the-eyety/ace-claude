@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ComIbmMQInput.msgnode="ComIbmMQInput.msgnode" xmlns:ComIbmReSequence.msgnode="ComIbmReSequence.msgnode" xmlns:ComIbmMQOutput.msgnode="ComIbmMQOutput.msgnode" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:eflow="http://www.ibm.com/wbi/2005/eflow" xmlns:utility="http://www.ibm.com/wbi/2005/eflow_utility" nsURI="MQ_RESEQUENCE_MF.msgflow" nsPrefix="MQ_RESEQUENCE_MF.msgflow">
+  <eClassifiers xmi:type="eflow:FCMComposite" name="FCMComposite_1" nodeLayoutStyle="RECTANGLE">
+    <eSuperTypes href="http://www.ibm.com/wbi/2005/eflow#//FCMBlock"/>
+    <translation xmi:type="utility:ConstantString" string="MQ_RESEQUENCE_MF"/>
+    <colorGraphic16 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/MQ_RESEQUENCE_APP/icons/full/obj16/MQ_RESEQUENCE_MF.gif"/>
+    <colorGraphic32 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/MQ_RESEQUENCE_APP/icons/full/obj30/MQ_RESEQUENCE_MF.gif"/>
+    <composition>
+      <nodes xmi:type="ComIbmMQInput.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_1" location="80,140" queueName="RESEQUENCE.IN" messageDomainProperty="XMLNSC" policyUrl="{POLICY_DEMO_POLICIES}:DevQM">
+        <translation xmi:type="utility:ConstantString" string="RESEQUENCE.IN"/>
+      </nodes>
+      <nodes xmi:type="ComIbmReSequence.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_2" location="380,140"
+          sequencePath="$Body/Msg/SeqNum"
+          startOfSequence="01"
+          endOfSequence="03"
+          missingMessageTimeout="30">
+        <translation xmi:type="utility:ConstantString" string="Resequence"/>
+      </nodes>
+      <nodes xmi:type="ComIbmMQOutput.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_3" location="680,140" queueName="RESEQUENCE.OUT" policyUrl="{POLICY_DEMO_POLICIES}:DevQM">
+        <translation xmi:type="utility:ConstantString" string="RESEQUENCE.OUT"/>
+      </nodes>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_1" sourceNode="FCMComposite_1_1" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_2" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_2" sourceNode="FCMComposite_1_2" sourceTerminalName="OutTerminal.out" targetNode="FCMComposite_1_3" targetTerminalName="InTerminal.in"/>
+    </composition>
+    <propertyOrganizer/>
+    <stickyBoard/>
+  </eClassifiers>
+</ecore:EPackage>
