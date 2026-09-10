@@ -1,0 +1,43 @@
+CREATE COMPUTE MODULE S3_COPY_MF_BuildRequest
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Incoming request: { "key": "...", "sourceBucket": "..." }
+		DECLARE objKey  CHARACTER COALESCE(InputRoot.JSON.Data.key, 'aaa.txt');
+		DECLARE srcBkt  CHARACTER COALESCE(InputRoot.JSON.Data.sourceBucket,
+		                                   'my-bucket');
+
+		-- COPY_OBJECT is a body-driven customActions interaction.
+		-- Mandatory request properties: Key and sourceBucket.
+		-- There is no separate destination-key property: the same Key is
+		-- copied from sourceBucket into the destination bucket.
+		SET OutputRoot.JSON.Data.bucketName        = 'my-bucket';
+		SET OutputRoot.JSON.Data.sourceBucket      = srcBkt;
+		SET OutputRoot.JSON.Data.Key               = objKey;
+
+		-- Source and destination are the same bucket here, so S3 would reject
+		-- a plain self-copy. REPLACE makes it a legal metadata-rewriting copy.
+		SET OutputRoot.JSON.Data.MetadataDirective = 'REPLACE';
+		-- ContentType is validated against a FIXED 16-value enum in the
+		-- connector model. An arbitrary MIME type fails validateCustomActionv0
+		-- with 'is not one of enum values: ...'. text/plain and text/rtf are
+		-- both allowed; using text/rtf here so the change is observable.
+		SET OutputRoot.JSON.Data.ContentType       = 'text/rtf';
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE S3_COPY_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'copied';
+		SET OutputRoot.JSON.Data.s3     = InputRoot.JSON.Data;
+		RETURN TRUE;
+	END;
+
+END MODULE;

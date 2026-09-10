@@ -1,0 +1,26 @@
+CREATE COMPUTE MODULE LDAP_DELETE_MF_BuildRequest
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Incoming: { "dn": "cn=...,ou=people,dc=example,dc=com" }
+		-- DELETEALL is filter-driven: dn is the filter-mandatory field
+		-- (constants.json updateDeleteMandatoryFilter). The node's <filter>
+		-- reads it from [[$Environment/ldapDn]].
+		SET Environment.ldapDn = InputRoot.JSON.Data.dn;
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE LDAP_DELETE_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status  = 'deleted';
+		SET OutputRoot.JSON.Data.dn      = Environment.ldapDn;
+		RETURN TRUE;
+	END;
+
+END MODULE;

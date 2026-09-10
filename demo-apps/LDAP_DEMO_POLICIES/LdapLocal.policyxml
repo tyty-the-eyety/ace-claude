@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="ldap" policyName="LdapLocal" policyTemplate="">
+    <credentialName>LdapCred</credentialName>
+    <applicationVersion>v1</applicationVersion>
+    <applicationType>online</applicationType>
+    <authenticationMethod>BASIC</authenticationMethod>
+    <endpointUrl>ldap://localhost:1389</endpointUrl>
+  </policy>
+</policies>

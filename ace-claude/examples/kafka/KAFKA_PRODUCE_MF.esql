@@ -1,0 +1,29 @@
+CREATE COMPUTE MODULE KAFKA_PRODUCE_MF_BuildMsg
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Incoming: { "orderId": "...", "amount": ... }
+		-- The KafkaProducer node publishes the message body as-is, so build
+		-- the payload that should land on the topic.
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.orderId   = InputRoot.JSON.Data.orderId;
+		SET OutputRoot.JSON.Data.amount    = InputRoot.JSON.Data.amount;
+		SET OutputRoot.JSON.Data.publishedAt = CAST(CURRENT_TIMESTAMP AS CHARACTER FORMAT 'yyyy-MM-dd''T''HH:mm:ss''Z''');
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE KAFKA_PRODUCE_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'published';
+		SET OutputRoot.JSON.Data.topic  = 'ace.demo';
+		RETURN TRUE;
+	END;
+
+END MODULE;

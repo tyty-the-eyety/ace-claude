@@ -73,7 +73,19 @@ dev-server work dir, vault key, queue manager, DSN).
 | EDA nodes: Aggregation, Collector, Resequence | `MQ_AGGREGATION_APP`, `MQ_COLLECTOR_APP`, `MQ_RESEQUENCE_APP` | `examples/eda/` |
 | Policy projects: MQEndpoint, HTTPRequest, Timer, WLM, TCPIP, Security/vault, ... | `POLICY_DEMO_APP` + `POLICY_DEMO_POLICIES` | `PolicyProject.md` |
 | Headless flow unit testing (Test Project + NodeSpy) | `HTTP_JSON_APP_Test` | `examples/unittest/` |
+| Amazon S3 connector: create, upsert, download, copy, list and delete objects | `S3_CONNECTOR_APP` + `S3_CONNECTOR_POLICIES` | `AmazonS3.md`, `examples/s3/` |
+| Kafka: producer, consumer and read nodes, PLAINTEXT and SASL | `KAFKA_DEMO_APP` + `KAFKA_DEMO_POLICIES` | `examples/kafka/` |
+| LDAP connector: search, create, update, delete entries | `LDAP_DEMO_APP` + `LDAP_DEMO_POLICIES` | `examples/ldap/` |
+| MQ publish/subscribe: MQOutput-via-alias and Publication node, admin subscription | `MQ_PUBSUB_APP` | `examples/mqpubsub/` |
+| MQTT publish/subscribe against Mosquitto | `MQTT_DEMO_APP` | `examples/mqtt/` |
 
+> **Connector scope.** All six Amazon S3 actions in the table are
+> runtime-verified against a real bucket. Filter-driven actions (list, delete)
+> need a `<filter>` child element on the request node — without it, list silently
+> returns a single record and delete fails outright. That encoding is written by
+> the ACE Toolkit and appears in no product schema; it is documented in
+> `ace-claude/AmazonS3.md`.
+>
 > `FILE_IO_APP` reads and writes under `/tmp/ace-file-io/`. Create the
 > directories before starting the server —
 > `mkdir -p /tmp/ace-file-io/{in/archive,out,error}` — ACE File nodes require

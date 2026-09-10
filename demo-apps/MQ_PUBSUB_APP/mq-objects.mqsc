@@ -1,0 +1,23 @@
+* MQ objects for the ACE pub/sub demo. Apply with:
+*   runmqsc <QMGR> < mq-objects.mqsc
+*
+* Publishing and subscribing in ACE are done with MQ OBJECTS, not node
+* properties: MQOutput has no topic attribute, MQInput has no subscription
+* attribute, and the Publication node takes its topic from the message.
+
+DEFINE TOPIC(ACE.DEMO.TOPIC) TOPICSTR('ace/demo/orders') REPLACE
+
+* destination for the subscription; MQ_SUB_MF reads this queue
+DEFINE QLOCAL(ACE.PUBSUB.SUBQ) REPLACE
+
+* where the subscriber flow puts what it received
+DEFINE QLOCAL(ACE.PUBSUB.OUT) REPLACE
+
+* lets MQOutput publish: an alias queue whose target is the TOPIC object
+DEFINE QALIAS(ACE.DEMO.PUB.ALIAS) TARGTYPE(TOPIC) TARGET(ACE.DEMO.TOPIC) REPLACE
+
+* administrative subscription. NOTE: admin subscriptions are DURABLE by
+* definition - publications accumulate on the destination queue while the
+* subscriber flow is stopped. A non-durable subscription can only be created by
+* an application at runtime, which no built-in ACE node does.
+DEFINE SUB(ACE.DEMO.SUB) TOPICOBJ(ACE.DEMO.TOPIC) DEST(ACE.PUBSUB.SUBQ) REPLACE

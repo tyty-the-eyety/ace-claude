@@ -1,0 +1,15 @@
+CREATE COMPUTE MODULE MQTT_SUB_MF_Handle
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.received = InputRoot.JSON.Data;
+		SET OutputRoot.JSON.Data.localEnv = InputLocalEnvironment;
+
+		-- one file per message; requires computeMode="destinationAndMessage"
+		SET OutputLocalEnvironment.Destination.File.Name =
+			'mqtt-' || CAST(CURRENT_TIMESTAMP AS CHARACTER FORMAT 'yyyyMMddHHmmssSSS') || '.json';
+		RETURN TRUE;
+	END;
+
+END MODULE;

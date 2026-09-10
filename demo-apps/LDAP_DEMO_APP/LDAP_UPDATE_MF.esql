@@ -1,0 +1,30 @@
+CREATE COMPUTE MODULE LDAP_UPDATE_MF_BuildRequest
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Incoming: { "dn": "cn=...,...", "mail": "new@example.com" }
+		-- UPDATEALL declares BOTH requestProperties and filterSupport, so it
+		-- needs a body (the new values) AND a where clause (which entry).
+		SET Environment.ldapDn = InputRoot.JSON.Data.dn;
+
+		-- multi-valued attributes must be JSON arrays, even for one value
+		CREATE FIELD OutputRoot.JSON.Data.mail IDENTITY (JSON.Array)mail;
+		SET OutputRoot.JSON.Data.mail.Item[1] = InputRoot.JSON.Data.mail;
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE LDAP_UPDATE_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'updated';
+		SET OutputRoot.JSON.Data.ldap   = InputRoot.JSON.Data;
+		RETURN TRUE;
+	END;
+
+END MODULE;

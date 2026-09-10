@@ -1,0 +1,29 @@
+CREATE COMPUTE MODULE MQ_PUB_OUTPUT_MF_Build
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Publish route 1: MQOutput to a QALIAS whose TARGTYPE is TOPIC.
+		-- The MQOutput node has NO topic property (queueName + destinationMode
+		-- only), so publishing is done by pointing it at an alias queue that
+		-- resolves to a topic object. Nothing topic-specific appears in the flow.
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.orderId   = InputRoot.JSON.Data.orderId;
+		SET OutputRoot.JSON.Data.amount    = InputRoot.JSON.Data.amount;
+		SET OutputRoot.JSON.Data.publisher = 'MQOutput/alias';
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE MQ_PUB_OUTPUT_MF_Reply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'published';
+		SET OutputRoot.JSON.Data.route  = 'MQOutput -> ACE.DEMO.PUB.ALIAS -> ace/demo/orders';
+		RETURN TRUE;
+	END;
+
+END MODULE;

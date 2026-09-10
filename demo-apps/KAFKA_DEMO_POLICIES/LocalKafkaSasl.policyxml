@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="Kafka" policyName="LocalKafkaSasl" policyTemplate="Kafka">
+    <bootstrapServers>localhost:9094</bootstrapServers>
+    <securityProtocol>SASL_PLAINTEXT</securityProtocol>
+    <saslMechanism>PLAIN</saslMechanism>
+    <securityIdentity>KafkaSasl</securityIdentity>
+    <sslProtocol>TLSv1.2</sslProtocol>
+  </policy>
+</policies>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ComIbmWSInput.msgnode="ComIbmWSInput.msgnode" xmlns:ComIbmCompute.msgnode="ComIbmCompute.msgnode" xmlns:ComIbmApplicationConnectorRequest_amazons3.msgnode="ComIbmApplicationConnectorRequest_amazons3.msgnode" xmlns:ComIbmWSReply.msgnode="ComIbmWSReply.msgnode" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:eflow="http://www.ibm.com/wbi/2005/eflow" xmlns:utility="http://www.ibm.com/wbi/2005/eflow_utility" nsURI="S3_CREATE_MF.msgflow" nsPrefix="S3_CREATE_MF.msgflow">
+  <eClassifiers xmi:type="eflow:FCMComposite" name="FCMComposite_1" nodeLayoutStyle="RECTANGLE">
+    <eSuperTypes href="http://www.ibm.com/wbi/2005/eflow#//FCMBlock"/>
+    <translation xmi:type="utility:ConstantString" string="S3_CREATE_MF"/>
+    <colorGraphic16 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/S3_CONNECTOR_APP/icons/full/obj16/S3_CREATE_MF.gif"/>
+    <colorGraphic32 xmi:type="utility:GIFFileGraphic" resourceName="platform:/plugin/S3_CONNECTOR_APP/icons/full/obj30/S3_CREATE_MF.gif"/>
+    <composition>
+      <nodes xmi:type="ComIbmWSInput.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_1" location="80,140" URLSpecifier="/s3/create" messageDomainProperty="JSON">
+        <translation xmi:type="utility:ConstantString" string="/s3/create"/>
+      </nodes>
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_2" location="280,140" computeExpression="esql://routine/#S3_CREATE_MF_BuildRequest.Main">
+        <translation xmi:type="utility:ConstantString" string="build_s3_request"/>
+      </nodes>
+      <nodes xmi:type="ComIbmApplicationConnectorRequest_amazons3.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_3" location="500,140" applicationConnectorType="amazons3" displayName="Create object" action="CREATE" businessObject="object" schemaPrefix="gen/S3_CREATE_MF.AmazonS3_Request" policyUrl="{S3_CONNECTOR_POLICIES}:AmazonS31" dataLocation="$Body" outputDataLocation="$OutputRoot" resultDataLocation="$ResultRoot">
+        <translation xmi:type="utility:ConstantString" string="s3_create_object"/>
+      </nodes>
+      <nodes xmi:type="ComIbmCompute.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_4" location="720,140" computeExpression="esql://routine/#S3_CREATE_MF_BuildReply.Main">
+        <translation xmi:type="utility:ConstantString" string="build_reply"/>
+      </nodes>
+      <nodes xmi:type="ComIbmWSReply.msgnode:FCMComposite_1" xmi:id="FCMComposite_1_5" location="920,140">
+        <translation xmi:type="utility:ConstantString" string="reply"/>
+      </nodes>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_1" targetNode="FCMComposite_1_2" sourceNode="FCMComposite_1_1" sourceTerminalName="OutTerminal.out" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_2" targetNode="FCMComposite_1_3" sourceNode="FCMComposite_1_2" sourceTerminalName="OutTerminal.out" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_3" targetNode="FCMComposite_1_4" sourceNode="FCMComposite_1_3" sourceTerminalName="OutTerminal.out" targetTerminalName="InTerminal.in"/>
+      <connections xmi:type="eflow:FCMConnection" xmi:id="FCMConnection_4" targetNode="FCMComposite_1_5" sourceNode="FCMComposite_1_4" sourceTerminalName="OutTerminal.out" targetTerminalName="InTerminal.in"/>
+    </composition>
+    <propertyOrganizer/>
+    <stickyBoard/>
+  </eClassifiers>
+</ecore:EPackage>

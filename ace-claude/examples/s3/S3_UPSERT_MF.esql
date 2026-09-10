@@ -1,0 +1,41 @@
+CREATE COMPUTE MODULE S3_UPSERT_MF_BuildRequest
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Incoming request: { "key": "...", "content": "..." }
+		DECLARE objKey     CHARACTER InputRoot.JSON.Data.key;
+		DECLARE objContent CHARACTER COALESCE(InputRoot.JSON.Data.content, '');
+
+		-- UPSERTWITHWHERE is the only S3 interaction declaring BOTH
+		-- requestProperties (mandatory bucketName + Key) and filterSupport
+		-- (mandatory Key), so it needs a body AND a where clause.
+		--
+		-- Where clause: the node's <filter> reads [[$Environment/upsertKey]].
+		SET Environment.upsertKey = objKey;
+
+		-- Body: note UPSERTWITHWHERE uses 'Body', NOT the 'content' that
+		-- CREATE uses for the same concept.
+		-- bucketName is a PARENT property: it comes from <connectorProperty/>
+		-- and is REJECTED if also placed in the body
+		-- ("is not allowed to have the additional property bucketName").
+		SET OutputRoot.JSON.Data.Key         = objKey;
+		SET OutputRoot.JSON.Data.Body        = objContent;
+		SET OutputRoot.JSON.Data.ContentType = 'text/plain';
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE S3_UPSERT_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'upserted';
+		SET OutputRoot.JSON.Data.s3     = InputRoot.JSON.Data;
+		RETURN TRUE;
+	END;
+
+END MODULE;

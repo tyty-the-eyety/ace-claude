@@ -1,0 +1,31 @@
+CREATE COMPUTE MODULE MQ_PUB_PUBLICATION_MF_Build
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Publish route 2: the Publication node. It has no topic property of its
+		-- own (its attributes are all connection/SSL related plus
+		-- subscriptionPoint), so the destination topic is taken from the
+		-- message: Properties.Topic.
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.Properties.Topic       = 'ace/demo/orders';
+
+		SET OutputRoot.JSON.Data.orderId   = InputRoot.JSON.Data.orderId;
+		SET OutputRoot.JSON.Data.amount    = InputRoot.JSON.Data.amount;
+		SET OutputRoot.JSON.Data.publisher = 'PublicationNode';
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE MQ_PUB_PUBLICATION_MF_Reply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'published';
+		SET OutputRoot.JSON.Data.route  = 'Publication node -> ace/demo/orders';
+		RETURN TRUE;
+	END;
+
+END MODULE;

@@ -21,12 +21,65 @@ The `examples/` subfolder alongside this skill contains annotated reference file
 | `examples/subflow_terminals.subflow` | Correct `InTerminal.Input` / `OutTerminal.Output` xmi:ids, `subflowImplFile` warning |
 | `examples/esql_patterns.esql` | DECLARE placement, repeating elements, FOR loop, datetime `HH`, error handlers, namespace mapping |
 
+**Runtime-verified capability folders** (ACE 13.0.2.2 — deployed, driven, observed;
+each has its own README with the gotchas). Prefer these:
+
+| Folder | Capability | Proof app in `demo-apps/` |
+|---|---|---|
+| `examples/s3/` | Amazon S3 connector — 6 actions, both `<filter>` forms | `S3_CONNECTOR_APP` |
+| `examples/kafka/` | Kafka producer / consumer / read, PLAINTEXT + SASL | `KAFKA_DEMO_APP` |
+| `examples/ldap/` | LDAP connector — search / create / update / delete | `LDAP_DEMO_APP` |
+| `examples/mqpubsub/` | MQ publish/subscribe, both publish routes | `MQ_PUBSUB_APP` |
+| `examples/mqtt/` | MQTT publish/subscribe (Mosquitto) | `MQTT_DEMO_APP` |
+| `examples/dbnode/` | DatabaseRetrieve node grid encoding | `DB_NODE_APP` |
+| `examples/jdbc/` | JavaCompute + JDBCProviders policy | `PG_JDBC_APP` |
+| `examples/odbc/` | ESQL over ODBC | `DB_PG_ODBC_APP` |
+| `examples/eda/` | Aggregation / Collector / Resequence | `MQ_*_APP` |
+| `examples/dfdl/` | DFDL parse + serialize | `DFDL_DEMO_APP` |
+| `examples/policy/` | Policy projects and attachment | `POLICY_DEMO_APP` |
+| `examples/unittest/` | Headless flow unit testing | `HTTP_JSON_APP_Test` |
+
+## Verified against ACE 13.0.2.2 — copy from the demo apps first
+
+Everything in `demo-apps/` and in the per-capability `examples/` folders has been
+**deployed to a real ACE 13.0.2.2 integration server, driven with real messages,
+and validated in the ACE Toolkit** (`mqsicreatebar -cleanBuild`, zero problems
+for those projects). They are the most reliable artifacts in this skill.
+
+**When building a flow, work in this order:**
+
+1. **Find the closest working flow in `demo-apps/` or `examples/` and copy it**,
+   then adapt. Node XML is full of encodings that cannot be derived from any
+   product schema — copying a proven file is faster and safer than assembling one
+   from prose.
+2. **Read `LEARNINGS.md`.** It is the running record of non-obvious gotchas found
+   by actually running things: undocumented XML encodings, mandatory properties
+   with no usable defaults, and failure modes where a flow packages, deploys and
+   runs while still being wrong. Read the section for the node family you are
+   about to use, every time.
+3. **Then** read the relevant section of this document for the rules and reference
+   tables.
+
+> **Copy the whole node element AND the matching `xmlns:` declaration.** Some node
+> families use a namespace URI that is not the prefix repeated — connector nodes,
+> for example, use a slash-separated path. Getting it wrong produces a flow that
+> packages, deploys and runs correctly but cannot be opened in the Toolkit.
+
+Where this document and a runtime-verified demo app disagree, **the demo app is
+right** — the prose has been wrong before (wrong Kafka node type names, a
+non-existent Amazon S3 `authenticationMethod`, a `gen/` schema rule that stops
+apps starting). Fix the prose when you find a disagreement.
+
 #️ **CRITICAL: Pre-Creation Validation**
 Before creating **ANY** artifacts, you **MUST**:
 - Read the **ENTIRE** relevant section for the node/project type
-- Verify the **EXACT** xmi:type namespace prefix from this document. DO NOT copy them from example .msgflow files as they may contain outdated or incorrect values.
+- Read the `LEARNINGS.md` section for that node family
+- Verify the **EXACT** xmi:type **and** the `xmlns:` URI it maps to, preferring a
+  runtime-verified file in `demo-apps/` or `examples/` over any table
 - Verify the **EXACT** project natures required
-- DO **NOT** copy from example files - they may be outdated 
+- Treat the four generic `examples/*.msgflow`/`.esql` files listed above as
+  illustrative only; the per-capability folders (`examples/s3/`, `examples/kafka/`,
+  `examples/dbnode/`, `examples/eda/`, ...) and `demo-apps/` are the verified ones
 
 # Workflow
 1. **Create an ACE Toolkit Application Project**
@@ -258,10 +311,8 @@ Before creating **ANY** artifacts, you **MUST**:
 | JMS Reply | `ComIbmJMSClientReply.msgnode` | |
 | JMS Receive | `ComIbmJMSClientReceive.msgnode` | |
 | JMS Header | `ComIbmJMSHeader.msgnode` | |
-| **Kafka** | | |
-| Kafka Consumer | `ComIbmKafkaMsgConsumer.msgnode` | |
-| Kafka Producer | `ComIbmKafkaMsgProducer.msgnode` | |
-| Kafka Read | `ComIbmKafkaMsgRead.msgnode` | |
+| **Kafka** — see *Special connector nodes* below | | |
+| Kafka Consumer / Producer / Read | *connector nodes* | do NOT use `ComIbmKafka*`; see below |
 | **Compute / Transform** | | |
 | Compute | `ComIbmCompute.msgnode` | `computeExpression` + `computeMode` required; see extended rules |
 | Java Compute | `ComIbmJavaCompute.msgnode` | |
@@ -354,6 +405,9 @@ Before creating **ANY** artifacts, you **MUST**:
 | MQTT Publish | `com_ibm_connector_mqtt_ComIbmOutput.msgnode` | `connectorName="MQTT"` |
 | Loop Back Request | `com_ibm_connector_loopback_ComIbmRequest.msgnode` | `connectorName="iib-loopback-connector"` |
 | Salesforce Request (no discovery) | `com_ibm_connector_salesforce_ComIbmRequest.msgnode` | `connectorName="iib-salesforce-connector"` |
+| Kafka Consumer | `com_ibm_connector_kafka_ComIbmEventInput.msgnode` | `connectorName="Kafka"` (runtime-proven) |
+| Kafka Producer | `com_ibm_connector_kafka_ComIbmOutput.msgnode` | `connectorName="Kafka"` (runtime-proven) |
+| Kafka Read | `com_ibm_connector_kafka_ComIbmRequest.msgnode` | `connectorName="Kafka"` (runtime-proven) |
 
 ### ApplicationConnector node reference table
 
@@ -494,14 +548,185 @@ Before creating **ANY** artifacts, you **MUST**:
 | Zoho Inventory | `zohoinventory` | |
 | Zoho Recruit | `zohorecruit` | ✓ |
 
+#### ApplicationConnector INPUT nodes require a separate `*event` connector
+
+Before authoring any `ComIbmApplicationConnectorInput_*` node, verify that
+`loopback-connector-<type>event` exists in
+`<ACE>/server/nodejs_all/node_modules/@ibm-app-connect/`. Event/input support
+ships as a **separate package** from the base connector; without it the flow
+packages, deploys and reports `BIP2269I ... started successfully`, then fails in a
+retry loop (`TypeError: i.getModel(...).subscribe is not a function`,
+`BIP5073E Failed to establish connection`) and emits nothing.
+
+The **"Has Input node" column in the table above is design-time only** — the
+msgnode exists and the Toolkit offers the node. It does not mean the node runs.
+Runtime-verified: LDAP is marked with an Input node and has no `ldapevent`
+package, so its input node cannot work. See `examples/ldap/README.md`.
+
+#### MQTT publish/subscribe — everything is a node property
+
+Nodes (connector family, both `connectorName="MQTT"`):
+`com_ibm_connector_mqtt_ComIbmOutput` (publish) and
+`com_ibm_connector_mqtt_ComIbmEventInput` (subscribe), defined in
+`tools/plugins/MQTTNodes_<version>.jar` under `com/ibm/connector/mqtt/`.
+
+```xml
+<nodes xmi:type="com_ibm_connector_mqtt_ComIbmOutput.msgnode:FCMComposite_1" ...
+       connectorName="MQTT" clientId="ace-mqtt-pub" topicName="ace/mqtt/orders"
+       hostName="localhost" port="1883" qos="0" useSSL="false"/>
+```
+
+Mandatory: `clientId`, `topicName`, `hostName`, `port` (default 1883), `qos`,
+`useSSL` (default false). `securityIdentity` optional; the EventInput also takes
+`messageDomainProperty`. Subscriber metadata arrives at
+`LocalEnvironment.MQTT.Input` (`Topic`, `QualityOfService`, `Duplicate`, `Retained`).
+
+**No broker-side objects and no policy are required** — the direct opposite of MQ
+pub/sub, where no node has a topic property at all. `ComIbmMQTTPublishPolicyType`/
+`ComIbmMQTTSubscribePolicyType` exist in `Policy.xsd` (credential type
+`mqtt: --username --password`) if the connection should be externalised.
+
+The runtime registry lists `ComIbmMQTTPublishNodeType`/`ComIbmMQTTSubscribeNodeType`,
+but **no such `.msgnode` definitions exist** — those names are not usable.
+
+See `examples/mqtt/`.
+
+#### Built-in node definitions: read them from the Toolkit plugin jar
+
+Every built-in node's `.msgnode` definition (139 of them) is inside
+`<ACE>/tools/plugins/com.ibm.etools.mft.ibmnodes.definitions_<version>.jar`.
+Unzip it to get authoritative attribute names, mandatory flags (`lowerBound="1"`),
+defaults and terminals — the same way connector node definitions are read from
+`server/nodejs_all/node_modules/@ibm-app-connect/ace-connector-ui-data/dist/`.
+Use this instead of guessing or reverse-engineering bytecode.
+
+#### MQ publish/subscribe is configured in MQ, not on the nodes
+
+- `ComIbmMQOutput` has **no topic attribute** — publish by pointing `queueName` at
+  a `QALIAS` with `TARGTYPE(TOPIC)`.
+- `ComIbmMQInput` has **no subscription attribute** — subscribe with an
+  administrative `DEFINE SUB ... DEST(queue)` and read that queue.
+- `ComIbmPublication` takes its topic from the message:
+  `SET OutputRoot.Properties.Topic = '...'`.
+- Admin subscriptions are **durable by definition**; non-durable subscriptions are
+  not achievable with built-in nodes.
+
+See `examples/mqpubsub/` for both publish routes plus the MQSC definitions.
+
 ### Connector Request node general rules
 
 For **every** `ComIbmApplicationConnectorRequest_*` node, you **MUST**:
 1. Set `schemaPrefix="gen/<FlowName>.<ConnectorLabel>_Request"` where `<ConnectorLabel>` matches the connector `.md` filename without extension (e.g. `AmazonS3` for `AmazonS3.md`).
-2. Create two empty JSON schema files in the `gen/` subdirectory of the Application project:
+2. Create two JSON schema files in the `gen/` subdirectory of the Application project:
    - `<FlowName>.<ConnectorLabel>_Request.request.schema.json`
    - `<FlowName>.<ConnectorLabel>_Request.response.schema.json`
+
+   **Each file MUST contain at least `{}`. Do NOT leave them empty.** An empty
+   file passes `ibmint package` AND `mqsicreatebar -cleanBuild`, then fails at
+   runtime with `BIP5753E: ... The document is empty` and the application will
+   not start. (Runtime-verified 2026-09-06; earlier revisions of this rule said
+   to create empty files, which was wrong.)
 3. Set `policyUrl="{<PolicyProjectName>}:<PolicyName>"`. Read the connector's `.md` file for the policy XML example and the allowed `displayName`/`action`/`businessObject` combinations. Read `PolicyProject.md` for Policy Project scaffolding rules.
+
+#### Connector actions: which ones can be hand-authored
+
+Connector actions split into two classes, and the connector's own model JSON says
+which before you write any code —
+`<ACE_INSTALL>/server/nodejs_all/node_modules/@ibm-app-connect/loopback-connector-<name>/lib/models/<businessObject>.json`,
+look at the interaction you intend to use:
+
+| Class | Model signature | Where the values go | Hand-authorable? |
+|---|---|---|---|
+| **Body-driven** | interaction has `requestProperties` | message body, set in ESQL, with `dataLocation="$Body"` | **Yes** |
+| **Filter-driven** | interaction has only `filterSupport` | a where clause / limit in a `<filter>` element | **Yes** — via `<filter>`, never the body |
+
+Check this **first**. Choosing a filter-driven action means the flow will build,
+deploy and start cleanly and then fail (or silently return one record) at
+runtime. Verified across five Amazon S3 actions with no exceptions; see
+`AmazonS3.md` for the evidence.
+
+#### Parent connector properties (`<connectorProperty/>`)
+
+Values the connector treats as *parent* properties are supplied by an
+undocumented child element of the request node, not by ESQL. It is an unbounded
+table, the same family of encoding as the DatabaseRetrieve grid:
+
+```xml
+<nodes xmi:type="ComIbmApplicationConnectorRequest_<suffix>.msgnode:FCMComposite_1" ... >
+  <translation xmi:type="utility:ConstantString" string="my_request_node"/>
+  <connectorProperty propertyName="bucketName" displayName="Bucket name"
+                     propertyValue="my-bucket" type="string" displayValue="my-bucket"/>
+</nodes>
+```
+
+Row fields: `propertyName`, `displayName`, `propertyValue`, `type`, `displayValue`.
+These reach the connector as its `query` object.
+
+**Parent properties go in exactly one place.** If the node carries a
+`<connectorProperty/>` row for a value, that value must **not** also appear in
+the message body — the runtime strips parent properties from the body and
+rejects duplicates with `["is not allowed to have the additional property
+\"<name>\""]`. If the node has no such row, the value belongs in the body.
+
+**Actions can be BOTH classes.** An interaction declaring `requestProperties`
+*and* `filterSupport` needs a body *and* a `<filter>` (runtime-verified with
+Amazon S3 `UPSERTWITHWHERE`).
+
+#### Filters (`<filter>` is an ELEMENT, not the `filter=""` attribute)
+
+Retrieve-style actions take their page size — and, for other actions, their where
+clause — from a `<filter>` child element of the request node. The empty
+`filter=""` attribute is not this encoding and does nothing:
+
+```xml
+<nodes xmi:type="ComIbmApplicationConnectorRequest_<suffix>.msgnode:FCMComposite_1" ... >
+  <filter>
+    <queryProperties limit="15" allowTruncation="true"/>
+  </filter>
+  <translation xmi:type="utility:ConstantString" string="my_request_node"/>
+</nodes>
+```
+
+**Omitting `<filter>` makes a RETRIEVEALL return exactly ONE record.** The
+connector defaults its page size to 1 when no filter object exists
+(`s = c ? (s = c.limit, delete c.limit) : s = 1`), after fetching everything from
+the backend and truncating. Always set an explicit `limit` on retrieve actions.
+
+The **where-clause** form, for actions that filter on a field:
+
+```xml
+<filter>
+  <filterElementObject type="where">
+    <filterElementArray type="and">
+      <connectorPropertyRef propertyName="bucketName" compareAction=""/>
+      <filterProperty propertyName="Key" displayName="Object name"
+                      propertyValue="[[$Environment/myKey]]" compareAction=""/>
+    </filterElementArray>
+  </filterElementObject>
+</filter>
+```
+
+`propertyValue="[[$Environment/...]]"` is a **message-tree reference** — populate
+it in ESQL upstream (`SET Environment.myKey = ...`). A literal value works too.
+The message body is NOT used to carry values for filter-driven actions.
+
+Neither `queryProperties` nor `filterElementObject` appears in any msgnode
+definition or product schema — both are written by the Toolkit and parsed by the
+runtime, so they cannot be derived from the product's own metadata.
+
+**Trap — `<requestMap>` templates are literals.** If a request is built in the
+Toolkit graphically the node gains `mappingMode="jsonmap"` and a
+`<requestMap map="..."/>` row. Inside that JSON mapping, `"template"` is a
+**literal string**, not the `[[$Environment/...]]` reference syntax used by
+`<filterProperty/>`. Putting a path there silently sends the path itself as the
+value — HTTP 200, plausible response, wrong data. Prefer building requests in
+ESQL unless the mapping syntax has been runtime-verified.
+
+#### Credentials for connector policies
+
+`mqsicredentials --help` prints an authoritative table of the credential type and
+required properties for **every** supported connector. Consult it instead of
+guessing; e.g. `amazons3: --secret-access-key <arg> --access-key-id <arg>`.
 
 ### Extended node rules
 
@@ -513,6 +738,104 @@ For **every** `ComIbmApplicationConnectorRequest_*` node, you **MUST**:
      3. Into the subflow: `targetTerminalName="InTerminal.Input"`. Out of the subflow: `sourceTerminalName="OutTerminal.Output"`. Note the capital I/O — these differ from regular node terminals.
      4. Label the subflow node with the subflow's name.
    - The ESQL module naming convention for a Compute node inside a subflow is `<subflowName>_Compute`, in a file named `<subflowName>.esql`.
+
+#### Kafka nodes (runtime-proven)
+
+**Use the connector-family node types. There are two Kafka node families and
+only one of them is usable:**
+
+| Use this (Toolkit palette) | NOT this (legacy) |
+|---|---|
+| `com_ibm_connector_kafka_ComIbmOutput.msgnode` | ~~`ComIbmKafkaProducer`~~ |
+| `com_ibm_connector_kafka_ComIbmEventInput.msgnode` | ~~`ComIbmKafkaConsumer`~~ |
+| `com_ibm_connector_kafka_ComIbmRequest.msgnode` | ~~`ComIbmKafkaRead`~~ |
+
+Both families are registered in the runtime and **both will run**, but the
+legacy `ComIbmKafka*` nodes **fail to build in the ACE Toolkit**, so a flow using
+them cannot be maintained by anyone opening it in the IDE. `ibmint package` and
+`mqsicreatebar -cleanBuild` on the connector family come back clean (verified:
+0 markers). The connector nodes all carry `connectorName="Kafka"`.
+
+Both families share `server/connectors/kafka/connectorkafka.jar`, so the property
+names and LocalEnvironment paths below are identical for either.
+
+```xml
+<nodes xmi:type="com_ibm_connector_kafka_ComIbmOutput.msgnode:FCMComposite_1" ...
+       connectorName="Kafka" topicName="ace.demo" clientId="ace-producer"
+       policyUrl="{KAFKA_DEMO_POLICIES}:LocalKafka"
+       useClientIdSuffix="true" acks="1" timeout="60"
+       validateMaster="inherit" validateFailureAction="exception" serializationMode="Default"/>
+
+<nodes xmi:type="com_ibm_connector_kafka_ComIbmEventInput.msgnode:FCMComposite_1" ...
+       connectorName="Kafka" topicName="ace.demo" bootstrapServers="localhost:9092"
+       groupId="ace-demo-group" clientId="ace-consumer" initialOffset="earliest"
+       enableAutoCommit="true" useSyncCommit="true" useClientIdSuffix="true"
+       connectionTimeout="15" sessionTimeout="10" receiveBatchSize="1"
+       securityProtocol="PLAINTEXT" sslProtocol="TLSv1.2" messageDomainProperty="JSON"
+       componentLevel="flow" additionalInstances="0" serializationMode="Default"/>
+
+<nodes xmi:type="com_ibm_connector_kafka_ComIbmRequest.msgnode:FCMComposite_1" ...
+       connectorName="Kafka" topicName="ace.demo" bootstrapServers="localhost:9092"
+       partitionNumber="0" offset="0" notFoundAction="no match"
+       connectionTimeout="5" outputDataLocation="$OutputRoot"
+       resultDataLocation="$ResultRoot" copyLocalEnvironment="true"
+       securityProtocol="PLAINTEXT" sslProtocol="TLSv1.2" messageDomainProperty="JSON"/>
+```
+
+**CRITICAL — the namespace URI is the node's PATH INSIDE ITS TOOLKIT PLUGIN JAR.**
+That single rule explains every case: a `.msgnode` stored at the top level of a jar
+uses just its filename as the URI (`xmlns:ComIbmMQInput.msgnode="ComIbmMQInput.msgnode"`),
+while one stored under a package path uses that path. Connector nodes live under
+`com/ibm/connector/<type>/`, hence the slashes:
+
+| Node | Jar | Path in jar → URI |
+|---|---|---|
+| MQ Input, Compute, … | `com.ibm.etools.mft.ibmnodes.definitions_<v>.jar` | `ComIbmMQInput.msgnode` |
+| Kafka | same jar | `com/ibm/connector/kafka/ComIbmOutput.msgnode` |
+| MQTT | `MQTTNodes_<v>.jar` | `com/ibm/connector/mqtt/ComIbmOutput.msgnode` |
+
+**To find any node's URI:** locate its `.msgnode` inside `<ACE>/tools/plugins/*.jar`
+and use the archive-internal path verbatim. Get it wrong and the flow still
+packages, deploys and RUNS, but the Toolkit reports
+`Message node "..." cannot be located` plus a terminal error per connection:
+
+```xml
+<!-- prefix uses underscores, URI uses SLASHES -->
+xmlns:com_ibm_connector_kafka_ComIbmEventInput.msgnode="com/ibm/connector/kafka/ComIbmEventInput.msgnode"
+xmlns:com_ibm_connector_kafka_ComIbmOutput.msgnode="com/ibm/connector/kafka/ComIbmOutput.msgnode"
+xmlns:com_ibm_connector_kafka_ComIbmRequest.msgnode="com/ibm/connector/kafka/ComIbmRequest.msgnode"
+```
+
+Built-in nodes repeat the name identically
+(`xmlns:ComIbmCompute.msgnode="ComIbmCompute.msgnode"`), so do NOT extrapolate
+that rule to connector nodes.
+
+**`bootstrapServers` is a mandatory NODE property even when a policy supplies it.**
+Omit it and the Toolkit reports `Unset mandatory property "Bootstrap servers"`,
+though the flow runs fine. Set it on the node AND attach the policy; the policy
+wins at runtime.
+
+- **`notFoundAction` on the Request node is MANDATORY** — omit it and the flow
+  will not start (`BIP3882E: The value 'NULL' supplied for property
+  'notFoundAction' ... is invalid`). Valid values: `latest`, `earliest`,
+  `exception`, and **`no match`** — note the space. A miss is propagated on
+  terminal `OutTerminal.noMatch`.
+- **`initialOffset`** on the EventInput node controls `auto.offset.reset`. The
+  default is `latest`, so a message published while the consumer group is still
+  rebalancing after server start is never delivered — it looks like a broken flow.
+  Set `initialOffset="earliest"` when testing.
+- **Metadata subtree differs per node**, and every field is CHARACTER, not INTEGER:
+  EventInput publishes `LocalEnvironment.Kafka.Input`, Request publishes
+  `LocalEnvironment.Kafka.Read`; both carry `topicName`, `partition`, `offset`.
+- **Connection: inline attributes or a Kafka policy**, both runtime-proven.
+  Attach with `policyUrl="{PolicyProject}:PolicyName"`. Policy attributes come
+  from `common/schemas/Policy/Policy.xsd` (`ComIbmKafkaPolicyType`):
+  `bootstrapServers`, `securityProtocol`, `sslProtocol` required; `saslMechanism`
+  and `securityIdentity` optional.
+- **SASL:** `securityProtocol="SASL_PLAINTEXT"`, `saslMechanism="PLAIN"`,
+  `securityIdentity="<credentialName>"` in the policy, plus
+  `mqsicredentials --credential-type kafka --credential-name <name> --username <u>
+  --password <p>`. Runtime-proven end to end.
 
 #### HTTP Input node
    - `URLSpecifier` attribute sets the URL path suffix (e.g. `URLSpecifier="/simple/proxy"`). This is required — the XSD field label is "Path to URL suffix". Do NOT use `path=` for this.

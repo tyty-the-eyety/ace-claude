@@ -1,0 +1,38 @@
+CREATE COMPUTE MODULE LDAP_SEARCH_MF_BuildRequest
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Incoming: { "filter": "(objectClass=inetOrgPerson)" }
+		-- RETRIEVEALL is a filter-driven interaction: the message body is not
+		-- used. The node's <filter> element reads the LDAP search string from
+		-- [[$Environment/ldapSearch]], so it is set here.
+		SET Environment.ldapSearch =
+			COALESCE(InputRoot.JSON.Data.filter, '(objectClass=inetOrgPerson)');
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE LDAP_SEARCH_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'found';
+
+		-- Copy the returned array. A JSON array must be created with
+		-- IDENTITY (JSON.Array) and populated via Item[i].
+		DECLARE n INTEGER CARDINALITY(InputRoot.JSON.Data.Item[]);
+		CREATE FIELD OutputRoot.JSON.Data.entries IDENTITY (JSON.Array)entries;
+		DECLARE i INTEGER 1;
+		WHILE i <= n DO
+			SET OutputRoot.JSON.Data.entries.Item[i] = InputRoot.JSON.Data.Item[i];
+			SET i = i + 1;
+		END WHILE;
+		SET OutputRoot.JSON.Data.count = n;
+
+		RETURN TRUE;
+	END;
+
+END MODULE;

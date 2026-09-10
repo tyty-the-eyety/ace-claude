@@ -1,0 +1,48 @@
+CREATE COMPUTE MODULE S3_LIST_MF_BuildRequest
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- RETRIEVEALL ignores the message body entirely. Any parent property
+		-- (e.g. Bucket) must be supplied by a <connectorProperty .../> row on
+		-- the request node, not from ESQL.
+		--
+		-- This action spans every bucket in the account and therefore requires
+		-- account-wide s3:ListAllMyBuckets, which cannot be scoped to a single
+		-- bucket.
+		--
+		-- KNOWN LIMITATION: this returns only the FIRST record of the result
+		-- set, not all objects. The connector does implement paginated,
+		-- bucket-scoped listing (MaxKeys + ContinuationToken) but only for the
+		-- 'object' model, gated on a where-clause bucketName that could not be
+		-- populated from hand-authored msgflow XML.
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE S3_LIST_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'listed';
+
+		-- Copy the connector's response array. A JSON array MUST be created
+		-- with IDENTITY (JSON.Array) and populated via Item[i]; assigning the
+		-- array directly, or using [i] alone, produces invalid JSON.
+		DECLARE n INTEGER CARDINALITY(InputRoot.JSON.Data.Item[]);
+		CREATE FIELD OutputRoot.JSON.Data.objects IDENTITY (JSON.Array)objects;
+		DECLARE i INTEGER 1;
+		WHILE i <= n DO
+			SET OutputRoot.JSON.Data.objects.Item[i] = InputRoot.JSON.Data.Item[i];
+			SET i = i + 1;
+		END WHILE;
+
+		SET OutputRoot.JSON.Data.count = n;
+
+
+		RETURN TRUE;
+	END;
+
+END MODULE;

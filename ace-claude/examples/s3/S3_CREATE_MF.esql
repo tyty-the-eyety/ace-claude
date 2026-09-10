@@ -1,0 +1,40 @@
+CREATE COMPUTE MODULE S3_CREATE_MF_BuildRequest
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Incoming request: { "key": "...", "content": "..." }
+		DECLARE objKey     CHARACTER COALESCE(InputRoot.JSON.Data.key, 'ace-claude-default.txt');
+		DECLARE objContent CHARACTER COALESCE(InputRoot.JSON.Data.content, '');
+
+		-- Build the Amazon S3 CREATE request body.
+		-- The CREATE interaction takes Key (mandatory), content and ContentType.
+		-- Note: CREATE uses 'content', while UPSERTWITHWHERE uses 'Body'.
+		-- bucketName comes from the AmazonS31 policy.
+		-- bucketName MUST be in the request body: the connector rejects the
+		-- request with 'Parent connector property bucketName - not found in
+		-- body or filter' even when bucketName is set in the policy.
+		SET OutputRoot.JSON.Data.bucketName  = 'my-bucket';
+		SET OutputRoot.JSON.Data.Key         = objKey;
+		SET OutputRoot.JSON.Data.content     = objContent;
+		SET OutputRoot.JSON.Data.ContentType = 'text/plain';
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE S3_CREATE_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- The connector response arrives in the message body.
+		SET OutputRoot.Properties.ContentType = 'application/json';
+
+		SET OutputRoot.JSON.Data.status = 'created';
+		SET OutputRoot.JSON.Data.s3     = InputRoot.JSON.Data;
+
+		RETURN TRUE;
+	END;
+
+END MODULE;

@@ -1,7 +1,13 @@
 # IBM ACE Development — Claude Instructions
 
 ## Before any ACE task
-Read `ace-claude/SKILL.md` in full before creating or modifying any msgflow, ESQL, Java, or Map artifact. The skill is self-contained and authoritative — do not rely on workspace flow files to determine correct node types or attributes.
+Read `ace-claude/SKILL.md` in full before creating or modifying any msgflow, ESQL, Java, or Map artifact.
+
+**Then copy from a runtime-verified artifact rather than assembling node XML from prose.** The projects in `demo-apps/` and the per-capability folders under `ace-claude/examples/` were deployed to a real ACE **13.0.2.2** server, driven with real messages, and validated in the ACE Toolkit (`mqsicreatebar -cleanBuild`, zero problems). Where SKILL.md and one of those artifacts disagree, the artifact is right — fix SKILL.md.
+
+**Always read `ace-claude/LEARNINGS.md`** for the node family you are about to use. It records the gotchas that only surface at runtime or in the Toolkit: undocumented XML encodings, mandatory properties with no usable default, and cases where a flow packages, deploys and runs while still being wrong.
+
+Do not trust arbitrary older workspace flows — but the `demo-apps/` and `examples/` artifacts named here are verified and should be copied, including their `xmlns:` declarations.
 
 Read the relevant example file from `ace-claude/examples/` before creating artifacts of that type:
 - `ace-claude/examples/mq_nodes.msgflow` — MQ Input/Output nodes
@@ -15,6 +21,8 @@ Read the relevant example file from `ace-claude/examples/` before creating artif
 - `ace-claude/examples/jdbc/` — runtime-proven JavaCompute→JDBC PostgreSQL app (JDBCProviders policy, vault jdbc credential, ibmint-compiled Java project); read `ace-claude/JDBC.md` (runbook) before any JavaCompute or DB-node work
 - `ace-claude/examples/dbnode/` — runtime-proven DatabaseRetrieve (built-in JDBC lookup) app; its msgflow grid encoding is entirely undocumented — read `examples/dbnode/README.md` rules 1-6 BEFORE authoring any Database* node
 - `ace-claude/examples/unittest/` — runtime-proven headless flow unit testing (Test Project + NodeSpy + ibmint testzip + IntegrationServer --test-project); read its `README.md` before writing flow tests
+- `ace-claude/examples/s3/` — runtime-proven Amazon S3 connector (6 actions; both `<filter>` forms — `queryProperties limit=` for retrieve, `filterElementObject type="where"` + `[[$Environment/x]]` for delete/upsert); read its `README.md` and `ace-claude/AmazonS3.md` before any connector work
+- `ace-claude/examples/kafka/` — runtime-proven Kafka producer/consumer/read (connector-family nodes, PLAINTEXT and SASL); read its `README.md` before any Kafka work
 
 Read `ace-claude/IntegrationServer.md` when a task involves starting, testing, or stopping an integration server (spinning up a server, running a BAR live, smoke-testing a flow, ephemeral test runs, vault keys, port selection).
 
@@ -25,6 +33,8 @@ Read `ace-claude/IntegrationServer.md` when a task involves starting, testing, o
 - Every WSRequest node must have `httpVersion="1.1"`, `protocol="TLS"`, and `messageDomainProperty=` — the runtime does not enforce these, so verify by reading the msgflow, never by smoke-testing alone
 - File Input / File Output directories must be ABSOLUTE paths — relative paths fail at startup with BIP3333E
 - A Compute node that sets `OutputLocalEnvironment.Destination.File.Name` must have `computeMode="destinationAndMessage"`, and must read the source filename from `InputLocalEnvironment.File.Name` (never `ComIbmFileInput.Response.FileName` — it silently resolves to NULL)
+- Connector nodes (`com_ibm_connector_*`, `ComIbmApplicationConnector*`) must have BOTH the right `xmi:type` and the right `xmlns:` URI — the URI is NOT always the prefix repeated (Kafka uses a slash path, e.g. `com/ibm/connector/kafka/ComIbmOutput.msgnode`). A wrong URI packages, deploys and RUNS while the Toolkit reports "Message node ... cannot be located". Copy both lines from `examples/`
+- Validate with `mqsicreatebar -data <ws> -a <APP> -cleanBuild` as well as `ibmint package`; read the verdict from the `Problem N: Resource - /PROJECT/...` lines, not the log tail, and note no BAR is written if ANY project in the workspace has errors
 - Never use `out` or `in` as ESQL variable or parameter names — they are reserved words
 - Datetime format strings must use `HH` (24-hour) — never `hh` (12-hour)
 - `DECLARE systemEnv EXTERNAL` (or any EXTERNAL) is app-scoped — one declaration per application is sufficient

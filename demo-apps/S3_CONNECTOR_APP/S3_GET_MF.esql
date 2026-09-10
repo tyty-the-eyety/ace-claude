@@ -1,0 +1,29 @@
+CREATE COMPUTE MODULE S3_GET_MF_BuildRequest
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Incoming request: { "key": "..." }
+		DECLARE objKey CHARACTER COALESCE(InputRoot.JSON.Data.key, 'from-ace-claude.txt');
+
+		-- DOWNLOAD_OBJECT is a customActions interaction.
+		-- Mandatory request properties: bucketName and Key.
+		SET OutputRoot.JSON.Data.bucketName = 'my-bucket';
+		SET OutputRoot.JSON.Data.Key        = objKey;
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE S3_GET_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'retrieved';
+		SET OutputRoot.JSON.Data.s3     = InputRoot.JSON.Data;
+		RETURN TRUE;
+	END;
+
+END MODULE;

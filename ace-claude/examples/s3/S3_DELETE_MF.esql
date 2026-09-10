@@ -1,0 +1,31 @@
+CREATE COMPUTE MODULE S3_DELETE_MF_BuildRequest
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Incoming request: { "key": "..." }
+		DECLARE objKey CHARACTER InputRoot.JSON.Data.key;
+
+		-- DELETEALL is a filter-driven action: the message body is NOT used to
+		-- carry the object key. The request node's <filter> element holds a
+		-- where clause whose Key value is the message reference
+		--   [[$Environment/deletePlaceHolder]]
+		-- so the key must be placed in the Environment tree here.
+		SET Environment.deletePlaceHolder = objKey;
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE S3_DELETE_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status  = 'deleted';
+		SET OutputRoot.JSON.Data.deleted = Environment.deletePlaceHolder;
+		RETURN TRUE;
+	END;
+
+END MODULE;

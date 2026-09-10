@@ -1,0 +1,202 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "items": {
+    "type": "object",
+    "properties": {
+      "Key": {
+        "title": "Object name",
+        "description": "Name of the object",
+        "type": "string",
+        "displayOrder": 1
+      },
+      "Bucket": {
+        "title": "Bucket name",
+        "description": "DNS-compliant name of a bucket belonging to the AWS S3 account. The name must be between 3 and 63 characters long, can consist of lowercase letters, numbers, and dashes, and must begin and end with a lowercase letter or number.",
+        "type": "string",
+        "displayOrder": 2
+      },
+      "LastModified": {
+        "title": "Last modified date",
+        "description": "Date when the object was last modified",
+        "type": "string",
+        "format": "date-time",
+        "displayOrder": 3
+      },
+      "ETag": {
+        "title": "ETag",
+        "description": "Hash value that is used to confirm the integrity of the object; for example, 3ca744fa96cb95e92081708887f63de5",
+        "type": "string",
+        "displayOrder": 4
+      },
+      "Size": {
+        "title": "Object size",
+        "description": "Object size in bytes",
+        "type": "number",
+        "displayOrder": 5
+      },
+      "StorageClass": {
+        "title": "Storage class",
+        "description": "Type of storage class to which the bucket belongs STANDARD,REDUCED_REDUNDANCY,GLACIER,STANDARD_IA,ONEZONE_IA",
+        "enum": [
+          "STANDARD",
+          "REDUCED_REDUNDANCY",
+          "GLACIER",
+          "STANDARD_IA",
+          "ONEZONE_IA"
+        ],
+        "default": "STANDARD",
+        "type": "string",
+        "displayOrder": 6
+      },
+      "Acl": {
+        "title": "ACL",
+        "description": "Access control list of the object",
+        "type": "object",
+        "properties": {
+          "AccessControlPolicy": {
+            "title": "Access control policy",
+            "description": "Access control policy of the object",
+            "type": "object",
+            "properties": {
+              "Owner": {
+                "title": "Owner",
+                "description": "Details about the owner of the bucket in which the object exists",
+                "type": "object",
+                "properties": {
+                  "ID": {
+                    "title": "ID",
+                    "description": "Unique ID of the owner of the bucket in which the object exists",
+                    "type": "string",
+                    "displayOrder": 1
+                  },
+                  "DisplayName": {
+                    "title": "Display name",
+                    "description": "Display name of the owner of the bucket",
+                    "type": "string",
+                    "displayOrder": 2
+                  }
+                },
+                "additionalProperties": false,
+                "displayOrder": 1
+              },
+              "Grants": {
+                "title": "Grants",
+                "description": "Object that represents the storage account ID and allowed access",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "Grantee": {
+                      "title": "Grantee",
+                      "description": "Unique object of another storage account to which access permission is granted for the object",
+                      "type": "object",
+                      "properties": {
+                        "ID": {
+                          "title": "ID",
+                          "description": "The canonical user ID of the grantee.",
+                          "type": "string",
+                          "displayOrder": 1
+                        },
+                        "DisplayName": {
+                          "title": "Display name",
+                          "description": "Screen name of the grantee.",
+                          "type": "string",
+                          "displayOrder": 2
+                        },
+                        "EmailAddress": {
+                          "title": "Email address",
+                          "description": "Email address of the grantee.",
+                          "type": "string",
+                          "displayOrder": 3
+                        },
+                        "Type": {
+                          "title": "Type",
+                          "description": "Type of grantee. Possible values include CanonicalUser, AmazonCustomerByEmail and Group",
+                          "type": "string",
+                          "displayOrder": 4,
+                          "display": {
+                            "enum": [
+                              "CanonicalUser",
+                              "AmazonCustomerByEmail",
+                              "Group"
+                            ]
+                          }
+                        },
+                        "URI": {
+                          "title": "URI",
+                          "description": "URI of the grantee group.",
+                          "type": "string",
+                          "displayOrder": 5
+                        }
+                      },
+                      "additionalProperties": false,
+                      "displayOrder": 1
+                    },
+                    "Permission": {
+                      "title": "Permission",
+                      "description": "Type of permission granted to the storage account. Possible values are: READ, READ_ACP, WRITE_ACP, and FULL_CONTROL.",
+                      "enum": [
+                        "READ",
+                        "WRITE",
+                        "READ_ACP",
+                        "WRITE_ACP",
+                        "FULL_CONTROL"
+                      ],
+                      "type": "string",
+                      "displayOrder": 2
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "displayOrder": 2
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false,
+        "displayOrder": 7
+      },
+      "SourceUrl": {
+        "title": "Source URL",
+        "description": "Source URL for the object.",
+        "type": "string",
+        "displayOrder": 8
+      },
+      "UniqueId": {
+        "title": "Unique ID",
+        "description": "Unique identifier for Object, specifies uuid.",
+        "type": "string",
+        "displayOrder": 9
+      },
+      "TagSet": {
+        "title": "Tag set",
+        "description": "Set of key-value pair forming tags for the object.",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "Key": {
+              "title": "Key",
+              "description": "Name of the tag.",
+              "type": "string",
+              "displayOrder": 1
+            },
+            "Value": {
+              "title": "Value",
+              "description": "Value of the tag.",
+              "type": "string",
+              "displayOrder": 2
+            }
+          },
+          "additionalProperties": false
+        },
+        "displayOrder": 1
+      }
+    },
+    "title": "objectcollection",
+    "additionalProperties": false
+  },
+  "type": "array",
+  "title": "objectcollection"
+}

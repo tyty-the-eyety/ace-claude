@@ -1,0 +1,16 @@
+CREATE COMPUTE MODULE MQ_SUB_MF_Handle
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- The MQInput node has NO subscription properties (queueName is
+		-- mandatory; there is no topic or durability attribute). Subscribing is
+		-- therefore an MQ-side concern: an administrative subscription
+		-- (DEFINE SUB) delivers publications to ACE.PUBSUB.SUBQ and this flow
+		-- simply reads that queue.
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.received  = InputRoot.JSON.Data;
+		SET OutputRoot.JSON.Data.subscriber = 'MQ_SUB_MF';
+		RETURN TRUE;
+	END;
+
+END MODULE;

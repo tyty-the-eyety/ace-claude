@@ -227,6 +227,48 @@ This skill is the run-and-verify half of the CLAUDE.md build loop:
 or artifact type runs clean here for the first time, save a minimal working
 example and note the gotcha per the project's self-extension rule.
 
+## Tracing (runtime-verified 2026-09-06)
+
+Needed when a failure happens *inside* a node's own runtime — connector nodes in
+particular raise `BIP4000E` / `BIP9937E` from their Node.js layer, and only a
+service trace explains them.
+
+**Scope the trace to ONE app.** A whole-server trace on a work dir with a dozen
+apps deployed produced a 229MB file in which the flow under investigation was a
+few dozen lines. Deploy the app on its own into a throwaway work dir first:
+
+```bash
+mqsicreateworkdir /tmp/trace-server
+ibmint deploy --input-bar-file <APP>.bar --output-work-directory /tmp/trace-server
+IntegrationServer --work-dir /tmp/trace-server --vault-key <key> \
+  --service-trace --user-trace
+```
+
+**Two things that will waste your time:**
+
+- `trace:` and `userTrace:` in `server.conf.yaml` produce **no trace files at
+  all** for an independent integration server. Use the command-line flags
+  `--service-trace` / `--user-trace`.
+- Output lands in `<work-dir>/config/common/log/`, **not** `<work-dir>/log/`:
+  - `integration_server.<name>.userTrace.0.txt` — flow/node level, ~1MB
+  - `integration_server.<name>.trace.0.txt` — service level, ~200MB+
+  Both are already plain text; no `mqsireadlog`/`mqsiformatlog` needed.
+
+`mqsichangetrace` requires `--integration-node` and therefore does **not** apply
+to an independent integration server.
+
+Start with user trace alone; add service trace only when you need the connector
+layer. In a service trace the useful lines are tagged `<JS>`:
+
+```bash
+grep "<JS>" integration_server.<name>.trace.0.txt \
+  | grep -v "Statistics.js\|WebSocket\|resolved value"
+```
+
+**Gotcha:** ACE redacts any field literally named `Key` from traces as though it
+were a secret — `MESSAGE WAS REDACTED AS IT CONTAINED SECRETS (Key)`. The value
+is not recoverable from the trace.
+
 ## Source
 Built from the IBM App Connect Enterprise 13.0.x *IntegrationServer command*
 reference. Most parameters apply to ACE 12 as well; confirm newer ones

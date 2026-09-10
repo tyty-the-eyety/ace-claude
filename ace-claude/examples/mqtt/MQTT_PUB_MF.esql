@@ -1,0 +1,27 @@
+CREATE COMPUTE MODULE MQTT_PUB_MF_Build
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- The MQTT Output node publishes the message body as-is. Topic, host,
+		-- port, qos and clientId are all NODE properties (unlike MQ, where the
+		-- topic comes from an MQ object or Properties.Topic).
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.orderId = InputRoot.JSON.Data.orderId;
+		SET OutputRoot.JSON.Data.amount  = InputRoot.JSON.Data.amount;
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE MQTT_PUB_MF_Reply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'published';
+		SET OutputRoot.JSON.Data.topic  = 'ace/mqtt/orders';
+		RETURN TRUE;
+	END;
+
+END MODULE;

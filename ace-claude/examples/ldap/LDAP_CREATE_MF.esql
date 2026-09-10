@@ -1,0 +1,63 @@
+CREATE COMPUTE MODULE LDAP_CREATE_MF_BuildRequest
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Incoming: { "uid": "...", "cn": "...", "sn": "...", "mail": "..." }
+		-- CREATE is body-driven, so the PARENT property goes IN THE BODY.
+		-- For a dynamic LDAP object the parent property is 'ou' (NOT 'baseDN',
+		-- despite baseDN being in the generic entry model):
+		--   baseDN in the body -> the connector passes it through as an LDAP
+		--     attribute and the directory rejects the add with ldapErrCode 17
+		--     'baseDN: attribute type undefined'
+		--   omitting it       -> 'Parent connector property ou - not found in
+		--     body or filter'
+		--
+		-- Do NOT send ldapObjectClass: the generic 'entry' model lists it as
+		-- mandatory, but for a DYNAMIC object the class is implied by
+		-- businessObject and the property is rejected as 'not allowed'.
+		-- 'ou' carries the FULL container DN. ldap-api-utils formCreateReqObject
+		-- builds the entry DN as:
+		--     cn=<cn>[,l=..][,st=..][,o=..][,c=..][,street=..][,uid=..] , <ou>
+		-- and then deletes 'ou' from the attributes, so it is never sent to the
+		-- directory as an attribute.
+		SET OutputRoot.JSON.Data.ou = 'ou=people,dc=example,dc=com';
+
+		-- cn is the RDN (constants.json: createMandatoryFields.inetOrgPerson=["cn"]).
+		SET OutputRoot.JSON.Data.cn = InputRoot.JSON.Data.cn;
+
+		-- DO NOT send uid/l/st/o/c/street here: the connector appends each of
+		-- them to the DN as an extra component, producing e.g.
+		-- 'cn=Carol,uid=carol,ou=people,...' whose parent does not exist
+		-- (ldapErrCode 32 No Such Object).
+
+		-- businessObject is a DYNAMIC object (the LDAP object class), so the
+		-- directory schema's own attributes are first-class properties on the
+		-- request, NOT nested under 'attributes'. inetOrgPerson requires sn.
+		--
+		-- MULTI-VALUED LDAP attributes must be JSON ARRAYS, even for a single
+		-- value ('is not of a type(s) array' otherwise). uid and cn are scalars;
+		-- sn and mail are arrays. A JSON array in ESQL needs
+		-- CREATE FIELD ... IDENTITY (JSON.Array) plus Item[i].
+		CREATE FIELD OutputRoot.JSON.Data.sn IDENTITY (JSON.Array)sn;
+		SET OutputRoot.JSON.Data.sn.Item[1] = InputRoot.JSON.Data.sn;
+
+		CREATE FIELD OutputRoot.JSON.Data.mail IDENTITY (JSON.Array)mail;
+		SET OutputRoot.JSON.Data.mail.Item[1] = InputRoot.JSON.Data.mail;
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE LDAP_CREATE_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'created';
+		SET OutputRoot.JSON.Data.ldap   = InputRoot.JSON.Data;
+		RETURN TRUE;
+	END;
+
+END MODULE;

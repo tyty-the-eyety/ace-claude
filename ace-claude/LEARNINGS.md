@@ -458,3 +458,256 @@ the body round-tripped while its WSRequest node carries none of `httpVersion`,
 require on **every** WSRequest. The runtime does not enforce them, so a green
 smoke test is not evidence of conformance; only reading the msgflow is. Audit
 node attributes separately from behaviour.
+
+
+## Amazon S3 connector — the ApplicationConnector Request node
+
+First connector taken from documented-only to runtime-proven (six actions:
+CREATE, UPSERTWITHWHERE, DOWNLOAD_OBJECT, COPY_OBJECT, RETRIEVEALL, DELETEALL).
+Working example: `examples/s3/`; workspace proof `S3_CONNECTOR_APP`.
+
+- **Two classes of connector action, and the model JSON tells you which.**
+  In `<ACE>/server/nodejs_all/node_modules/@ibm-app-connect/loopback-connector-<name>/lib/models/<object>.json`,
+  an interaction with `requestProperties` is **body-driven** (values set in ESQL,
+  `dataLocation="$Body"`); one with only `filterSupport` is **filter-driven**
+  (values come from a `<filter>` element, and the body is ignored). An
+  interaction declaring *both* needs both. Check before writing the flow — a
+  filter-driven action built as body-driven builds, deploys and starts cleanly,
+  then fails or silently returns one record.
+- **`<filter>` is a child ELEMENT, not the `filter=""` attribute.** The attribute
+  exists on the node and is inert; every syntax tried behaved identically to
+  supplying nothing. Two forms, both written by the Toolkit and parsed by the
+  runtime, and **neither appears in any msgnode definition or product schema**:
+  ```xml
+  <filter><queryProperties limit="15" allowTruncation="true"/></filter>
+  ```
+  ```xml
+  <filter><filterElementObject type="where"><filterElementArray type="and">
+    <connectorPropertyRef propertyName="bucketName" compareAction=""/>
+    <filterProperty propertyName="Key" displayName="Object name"
+                    propertyValue="[[$Environment/myKey]]" compareAction=""/>
+  </filterElementArray></filterElementObject></filter>
+  ```
+- **Omit `<filter>` on a RETRIEVEALL and you get exactly ONE record.** Not a bug:
+  `s = c ? (s = c.limit, delete c.limit) : s = 1` in
+  `loopback-connector-provider-embedded/lib/utils.js`. The connector fetches
+  everything then truncates — trace showed `Total Objects obtained for bucket
+  are: 4` followed by `Total number of items being sent to caller 1`. HTTP 200,
+  well-formed JSON, silently incomplete.
+- **`[[$Environment/x]]` in `filterProperty/@propertyValue` is a message-tree
+  reference**; set it upstream with `SET Environment.x = ...`. But
+  **`"template"` inside a `<requestMap>` is a LITERAL** — putting a path there
+  creates an object literally named `$Environment/x`. Two syntaxes, same-looking
+  values, opposite meaning.
+- **Parent properties go in exactly one place.** If the node has a
+  `<connectorProperty propertyName="bucketName" .../>` row, `bucketName` must NOT
+  also be in the body — the runtime strips parents from the body and rejects the
+  duplicate (`is not allowed to have the additional property "bucketName"`). With
+  no such row, it belongs in the body.
+- **`gen/*.schema.json` must contain at least `{}`.** Empty files pass
+  `ibmint package` AND `mqsicreatebar -cleanBuild`, then fail at runtime with
+  `BIP5753E: ... The document is empty` and the app never starts.
+- **Property names differ between interactions for the same concept.** `CREATE`
+  takes `content`; `UPSERTWITHWHERE` takes `Body`. `ContentType` is a fixed
+  16-value MIME enum — an arbitrary type fails `validateCustomActionv0`.
+- **`DELETEALL` is a single-object delete** scoped by a `Key` filter, not a bulk
+  wipe. There is no separate single-delete action.
+- **The credential type table is authoritative.** `mqsicredentials --help` lists
+  the required properties for every connector (`amazons3: --secret-access-key
+  --access-key-id`). The policy needs `authenticationMethod` from
+  `common/schemas/Connectors/PolicyConnectors.xsd` — for amazons3 the enum has
+  exactly one value, `BASIC`.
+- **Every Toolkit round-trip sets `displayName="undefined"`** on the request
+  node. Check that attribute after opening a connector flow in the Toolkit.
+- **Connector failures are raised in the connector's Node.js layer**, so only a
+  service trace explains them; the useful lines are tagged `<JS>`. Trace one app
+  in its own work dir — see the tracing section of `IntegrationServer.md`.
+
+
+## Kafka nodes (Producer, Consumer, Read — all runtime-proven)
+
+Working examples: `examples/kafka/`; workspace proof `KAFKA_DEMO_APP` against
+Apache Kafka 4.3.1 in Docker.
+
+- **There are TWO Kafka node families and only one is usable.** The Toolkit
+  palette gives connector-framework nodes —
+  `com_ibm_connector_kafka_ComIbmOutput` / `...ComIbmEventInput` /
+  `...ComIbmRequest`, each with `connectorName="Kafka"`. There is also a legacy
+  family (`ComIbmKafkaProducer` / `ComIbmKafkaConsumer` / `ComIbmKafkaRead`).
+  Both are registered in `AdminServices.bir` and **both run correctly**, but the
+  legacy nodes **do not build in the ACE Toolkit**, so a flow using them cannot be
+  opened and maintained in the IDE. Always author the connector family.
+  `mqsicreatebar -cleanBuild` on the connector version returns 0 markers.
+  *(Header-only detail: an earlier revision of this file recommended the legacy
+  names. They were runtime-proven but Toolkit-hostile; corrected.)*
+- Both families share `server/connectors/kafka/connectorkafka.jar`, so **property
+  names and LocalEnvironment paths are identical either way** — useful, because the
+  jar bytecode is the only authoritative source for them (built-in node
+  definitions are not shipped as files).
+- **Connector-node namespace URIs are PATHS, not the prefix repeated.** The single
+  thing that made these flows resolve in the Toolkit:
+  `xmlns:com_ibm_connector_kafka_ComIbmEventInput.msgnode="com/ibm/connector/kafka/ComIbmEventInput.msgnode"`
+  — underscores in the prefix, **slashes in the URI**. Built-in nodes repeat the
+  name identically (`xmlns:ComIbmCompute.msgnode="ComIbmCompute.msgnode"`), and
+  extrapolating that rule to connector nodes produces a flow that packages,
+  deploys and RUNS correctly while the Toolkit reports
+  `Message node "..." cannot be located` and a terminal error per connection.
+- **`bootstrapServers` is a mandatory NODE property even when a Kafka policy
+  supplies it** — `Unset mandatory property "Bootstrap servers"` in the Toolkit,
+  though the flow runs. Set it on the node and attach the policy anyway.
+- **`mqsicreatebar` reads its verdict from the Problem list, not the log tail.**
+  `Checking the workspace for markers counter:N` is a progress/retry counter, NOT
+  a marker count — I misread it as "0 markers" and wrongly reported a clean
+  validation. Also, **no BAR is written if ANY project in the workspace has
+  errors**, so a missing BAR does not mean the project you asked about failed.
+  Grep for `^\s*Problem [0-9]+.*<PROJECT>` to get the real answer.
+- **`notFoundAction` on the Request node is mandatory and has no usable default.**
+  Omit it and the flow will not start: `BIP3882E: The value 'NULL' supplied for
+  property 'notFoundAction' to the Kafka connector is invalid`. Valid values, from
+  `KafkaRequestConnector.setNotFoundAction` bytecode: `latest`, `earliest`,
+  `exception`, and **`no match`** — with a space. The connector's own trace calls
+  `no match` "the default value" while still rejecting NULL. A miss propagates on
+  `OutTerminal.noMatch`.
+- **`initialOffset` on the EventInput node is `auto.offset.reset`.** It defaults to
+  `latest`, so a message published while the consumer group is still rebalancing
+  just after server start is never delivered. It looks exactly like a broken flow.
+  Use `initialOffset="earliest"` when testing.
+- **Metadata lands in a different LocalEnvironment subtree per node:** EventInput
+  -> `LocalEnvironment.Kafka.Input`; Request -> `LocalEnvironment.Kafka.Read`.
+  Both carry `topicName`, `partition`, `offset`, **all CHARACTER, not INTEGER**.
+- **Connection works inline on the node OR from a Kafka policy** attached with
+  `policyUrl="{Project}:Name"`; both proven, including SASL_PLAINTEXT with
+  `securityIdentity` and a `mqsicredentials --credential-type kafka` credential.
+- Writing `OutputLocalEnvironment.Destination.File.Name` for a downstream
+  FileOutput needs **`computeMode="destinationAndMessage"`** — same trap already
+  recorded for FILE_IO_APP; `localEnvironmentAndMessage` silently discards it and
+  FileOutput fails with `BIP3325E ... for file name ''`. FileOutput also has **no
+  `fileName` attribute**; setting one is ignored.
+
+
+## LDAP connector (ApplicationConnector family — search/create/update/delete proven)
+
+Working examples: `examples/ldap/`; workspace proof `LDAP_DEMO_APP` against
+OpenLDAP, Toolkit-validated (BAR built cleanly in the IDE).
+
+- **Same node family as Amazon S3** (`ComIbmApplicationConnectorRequest_<type>`,
+  `applicationConnectorType="ldap"`), and the namespace URI here IS the prefix
+  repeated — the simple rule. Only the *connector* family (`com_ibm_connector_*`,
+  e.g. Kafka) uses a slash path. Everything learned about `<filter>`,
+  `<connectorProperty/>` and the body/filter classes transferred unchanged, and
+  update/delete worked first try because of it.
+- **`businessObject` is the LDAP object class, not `entry`.** LDAP uses
+  `dynamicObjects` and ships no `objects.json`; `entry.json` is only a template.
+  `businessObject="entry"` fails with `The class definition for the object or its
+  parent object is either missing or invalid`. Consequently the class's own schema
+  attributes are first-class body properties, and template-only fields are
+  rejected — a where clause on `searchCriteria`/`scope` gives `is not allowed to
+  have the additional property`, and `ldapObjectClass` is refused on create
+  despite the template marking it mandatory.
+- **The connector builds the DN itself**, in
+  `@ibm-app-connect/ldap-api-utils/lib/util/requestUtil.js` → `formCreateReqObject`:
+  `dn = "cn="+cn [+",l="] [+",st="] [+",o="] [+",c="] [+",street="] [+",uid="+uid] + "," + (ou || r)`,
+  then `delete entry.ou`. So **`ou` carries the full container DN** and never
+  reaches the directory as an attribute; **`uid`/`l`/`st`/`o`/`c`/`street` become
+  DN COMPONENTS, not attributes**; and `baseDN` in the body is passed through as an
+  attribute (`ldapErrCode 17 baseDN: attribute type undefined`) even though it is
+  the correct `<connectorProperty/>` for RETRIEVEALL. Sending `uid` on create
+  yields `ldapErrCode 32 No Such Object` quoting the deepest *matched* ancestor —
+  an existing DN — which makes the error look nonsensical.
+- **Multi-valued attributes must be JSON arrays** even for one value
+  (`is not of a type(s) array`): `sn`, `mail` are arrays; `cn`, `uid` scalars.
+- `lib/constants.json` in a connector is worth reading before anything else — it
+  holds `createMandatoryFields` per class (inetOrgPerson → `cn`, the RDN),
+  `updateDeleteMandatoryFilter`, `customActionMandatoryFields`, valid scopes and
+  page limits.
+- **Connector payloads are redacted in service trace** (`"CUSTOMER-DATA-REDACTED"`).
+  A trace gives the call sequence but not the data — for payload problems read the
+  `*-api-utils` package source instead. That is what solved this one; the trace did not.
+
+### ApplicationConnector INPUT nodes need a separate `*event` package
+
+`ComIbmApplicationConnectorInput_ldap` packages, deploys and reports
+`BIP2269I ... started successfully`, then fails in a retry loop about once a
+second, emitting nothing:
+
+```
+BIP9937E: TypeError: i.getModel(...).subscribe is not a function
+BIP5073E: Failed to establish connection to 'LDAP'
+BIP9953E: An error occurred while trying to receive an event from the first application.
+```
+
+ACE ships event/input support as separate packages
+`loopback-connector-<type>event` (17 installed: gmailevent, asanaevent,
+googlepubsubevent, ...). There is no `loopback-connector-ldapevent`, and base
+connectors implement no `subscribe`/`unsubscribe` (amazons3 and salesforce do not
+either). **Before authoring any `ComIbmApplicationConnectorInput_*` node, check
+that `loopback-connector-<type>event` exists in
+`<ACE>/server/nodejs_all/node_modules/@ibm-app-connect/`.** The "Has Input node"
+column in the SKILL.md connector table is design-time only and does not imply
+runtime support. This failure mode is worse than a wrong result: the flow claims
+to have started and then burns CPU indefinitely.
+
+
+## MQ publish/subscribe — and where built-in node definitions actually live
+
+Working examples: `examples/mqpubsub/`; workspace proof `MQ_PUBSUB_APP` against
+IBM MQ 9.4, Toolkit-validated (0 problems).
+
+- **ALL 139 built-in node definitions ship in a Toolkit plugin jar:**
+  `tools/plugins/com.ibm.etools.mft.ibmnodes.definitions_<version>.jar`. Unzip it
+  and read `.msgnode` files exactly as for connector nodes — mandatory attributes
+  (`lowerBound="1"`), defaults, terminals, the lot. *(An earlier entry claimed
+  built-in node definitions were not on disk and fell back to bytecode plus
+  Toolkit round-trips. That was wrong — this jar is the authoritative source.)*
+- **Pub/sub is configured in MQ, not on the nodes.** From those definitions:
+  `ComIbmMQOutput` has NO topic attribute (only `queueName`, `destinationMode`
+  default `fixed`, `transactionMode`/`persistenceMode` default `automatic`);
+  `ComIbmMQInput` has NO subscription attribute (`queueName` mandatory, and
+  `topicProperty` is just a string — it cannot subscribe); `ComIbmPublication`
+  has no topic attribute either, only connection/SSL properties plus
+  `subscriptionPoint`.
+- **Publishing with MQOutput** means pointing it at a `QALIAS` whose
+  `TARGTYPE(TOPIC)` targets a topic object. The flow contains nothing
+  topic-specific — a reader of the msgflow alone cannot tell it publishes.
+- **Publishing with the Publication node** takes the topic from the message:
+  `SET OutputRoot.Properties.Topic = 'ace/demo/orders';`
+- **Subscribing** requires an administrative subscription
+  (`DEFINE SUB ... DEST(queue)`) with `MQInput` reading that queue.
+- **Subscription durability is not a design choice.** Admin subscriptions are
+  durable by definition, so publications accumulate while the subscriber flow is
+  stopped. Non-durable subscriptions can only be created by an application at
+  runtime, which no built-in node does. Do not promise non-durable behaviour with
+  MQInput.
+- Verify the MQ plumbing independently before blaming ACE: `amqsput` to the alias,
+  check `CURDEPTH` on the subscription queue, `amqsget` it back.
+
+
+## MQTT pub/sub — and the namespace-URI rule explained
+
+Working examples: `examples/mqtt/`; workspace proof `MQTT_DEMO_APP` against
+Eclipse Mosquitto 2, Toolkit-validated (0 problems).
+
+- **The connector xmlns URI is the node's path inside its Toolkit plugin jar.**
+  This supersedes the earlier "connector nodes use a slash path" note, which
+  described the symptom rather than the rule. `MQTTNodes_<v>.jar` stores its nodes
+  under `com/ibm/connector/mqtt/`, the definitions jar stores Kafka's under
+  `com/ibm/connector/kafka/` and MQInput/Compute at the top level — which is
+  exactly why the first two need slashes and the third does not. **To find any
+  node's URI, locate its `.msgnode` in `<ACE>/tools/plugins/*.jar` and use the
+  archive-internal path.**
+- **MQTT node types are the connector family**:
+  `com_ibm_connector_mqtt_ComIbmOutput` and `com_ibm_connector_mqtt_ComIbmEventInput`,
+  both `connectorName="MQTT"`. The runtime registry also lists
+  `ComIbmMQTTPublishNodeType`/`ComIbmMQTTSubscribeNodeType` but **no matching
+  `.msgnode` exists anywhere in the product** — registry names are not proof that
+  a node type is usable.
+- **MQTT is entirely node-configured**: `clientId`, `topicName`, `hostName`,
+  `port` (1883), `qos`, `useSSL` are all mandatory node properties. No broker
+  objects, no policy needed. This is the exact opposite of MQ pub/sub, where none
+  of MQOutput/MQInput/Publication has a topic property and everything is done with
+  MQ objects — worth showing side by side when explaining ACE messaging.
+- Subscriber metadata: `LocalEnvironment.MQTT.Input` with `Topic`,
+  `QualityOfService`, `Duplicate`, `Retained`.
+- Mosquitto 2.x listens only on localhost inside its container unless given a
+  config with `listener 1883 0.0.0.0` and `allow_anonymous true` — without it the
+  broker looks up but nothing can connect.

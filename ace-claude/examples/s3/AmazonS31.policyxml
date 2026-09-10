@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="amazons3" policyName="AmazonS31" policyTemplate="">
+    <credentialName>AmazonS3Credential</credentialName>
+    <applicationVersion>v1</applicationVersion>
+    <applicationType>online</applicationType>
+    <authenticationMethod>BASIC</authenticationMethod>
+    <region>eu-west-2</region>
+    <bucketName>my-bucket</bucketName>
+  </policy>
+</policies>

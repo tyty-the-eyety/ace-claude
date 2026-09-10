@@ -1,0 +1,28 @@
+CREATE COMPUTE MODULE KAFKA_READ_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- KafkaRead replaces the message body with the record it read and
+		-- publishes its coordinates under LocalEnvironment.
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status  = 'read';
+		SET OutputRoot.JSON.Data.record  = InputRoot.JSON.Data;
+		SET OutputRoot.JSON.Data.localEnv = InputLocalEnvironment;
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+
+CREATE COMPUTE MODULE KAFKA_READ_MF_NotFound
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Reached via the KafkaRead node's noMatch terminal when the requested
+		-- offset does not exist and notFoundAction="no match".
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'not-found';
+		RETURN TRUE;
+	END;
+
+END MODULE;

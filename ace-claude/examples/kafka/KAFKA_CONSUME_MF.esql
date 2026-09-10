@@ -1,0 +1,27 @@
+CREATE COMPUTE MODULE KAFKA_CONSUME_MF_Handle
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- The KafkaConsumer node publishes message metadata under
+		-- LocalEnvironment.Kafka.Input — topicName, partition and offset.
+		-- All three arrive as CHARACTER, not INTEGER.
+		DECLARE kafkaIn REFERENCE TO InputLocalEnvironment.Kafka.Input;
+
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.payload   = InputRoot.JSON.Data;
+		SET OutputRoot.JSON.Data.topic     = kafkaIn.topicName;
+		SET OutputRoot.JSON.Data.partition = kafkaIn.partition;
+		SET OutputRoot.JSON.Data.offset    = kafkaIn.offset;
+
+		-- One file per message, named from the Kafka coordinates.
+		-- REQUIRES computeMode="destinationAndMessage" on this node: with any
+		-- other mode OutputLocalEnvironment is discarded and the FileOutput
+		-- node fails with BIP3325E and an empty file name.
+		SET OutputLocalEnvironment.Destination.File.Name =
+			'kafka-p' || COALESCE(kafkaIn.partition, '0')
+			|| '-o'   || COALESCE(kafkaIn.offset, '0') || '.json';
+
+		RETURN TRUE;
+	END;
+
+END MODULE;
