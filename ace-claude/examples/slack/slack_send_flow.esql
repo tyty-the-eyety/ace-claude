@@ -1,0 +1,37 @@
+-- message/CREATE contract, from the connector's own model
+-- (loopback-connector-slack/lib/models/message.json):
+--   mandatory        : text
+--   basic properties : OBJECT_NAME, OBJECT_ID, text
+--   response         : ts
+-- OBJECT_ID / OBJECT_NAME identify the target channel and are listed under
+-- requestProperties, so they belong in the request BODY, not in a
+-- <connectorProperty/> row the way S3's bucketName does.
+CREATE COMPUTE MODULE slack_send_flow_BuildRequest
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		-- OBJECT_NAME is the "parent discriminator": the connector refuses the
+		-- request without it (BIP9937E "Parent discriminator connector property
+		-- OBJECT_NAME - not found in body or filter"). OBJECT_ID alone is not
+		-- enough, despite both being listed in the interaction's basic set.
+		SET OutputRoot.JSON.Data.OBJECT_NAME = COALESCE(InputRoot.JSON.Data.channel, 'ace-slack-test');
+		SET OutputRoot.JSON.Data.OBJECT_ID   = COALESCE(InputRoot.JSON.Data.channelId, 'C01234ABCDE');
+		SET OutputRoot.JSON.Data.text        = COALESCE(InputRoot.JSON.Data.text, 'Hello from IBM ACE');
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+CREATE COMPUTE MODULE slack_send_flow_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.status = 'sent';
+		-- CREATE returns the message timestamp, which is Slack's message id.
+		SET OutputRoot.JSON.Data.ts = InputRoot.JSON.Data.ts;
+		RETURN TRUE;
+	END;
+
+END MODULE;

@@ -1,0 +1,43 @@
+-- RouteToLabel reads a list of target label names from
+-- LocalEnvironment.Destination.RouterList.DestinationData. That structure is
+-- NOT described in LocalEnvironment.schema.json (RouterList is typed as a bare
+-- object), so the shape below is the runtime-proven one.
+CREATE COMPUTE MODULE ROUTE_LABEL_LAST_MF_Build
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Two entries, in order: alpha then beta. mode="routeToLast" decides which one
+		-- this node actually propagates to.
+		SET OutputLocalEnvironment.Destination.RouterList.DestinationData[1].labelName = 'alpha';
+		SET OutputLocalEnvironment.Destination.RouterList.DestinationData[2].labelName = 'beta';
+
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.mode = 'routeToLast';
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+CREATE COMPUTE MODULE ROUTE_LABEL_LAST_MF_Alpha
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.mode      = InputRoot.JSON.Data.mode;
+		SET OutputRoot.JSON.Data.handledBy = 'alpha';
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+CREATE COMPUTE MODULE ROUTE_LABEL_LAST_MF_Beta
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.mode      = InputRoot.JSON.Data.mode;
+		SET OutputRoot.JSON.Data.handledBy = 'beta';
+		RETURN TRUE;
+	END;
+
+END MODULE;

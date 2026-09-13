@@ -1,0 +1,312 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "items": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "title": "ID",
+        "description": "The unique group ID",
+        "type": "string",
+        "displayOrder": 2
+      },
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "displayOrder": 1
+      },
+      "is_group": {
+        "title": "Is group",
+        "type": "boolean",
+        "displayOrder": 13
+      },
+      "created": {
+        "title": "Created",
+        "description": "A Unix timestamp of when the private channel was created",
+        "type": "number",
+        "displayOrder": 3
+      },
+      "creator": {
+        "title": "Creator",
+        "description": "User ID of the member that created this group",
+        "type": "string",
+        "displayOrder": 4
+      },
+      "is_archived": {
+        "title": "Is archived",
+        "description": "A boolean value indicating whether the group is archived or not",
+        "type": "boolean",
+        "displayOrder": 5
+      },
+      "is_mpim": {
+        "title": "Is MPIM",
+        "description": "Is group an MPIM",
+        "type": "boolean",
+        "displayOrder": 15
+      },
+      "is_open": {
+        "title": "Is open",
+        "type": "boolean",
+        "displayOrder": 6
+      },
+      "last_read": {
+        "title": "Last read",
+        "description": "The timestamp for the last message the calling user has read in this channel",
+        "type": "string",
+        "displayOrder": 7
+      },
+      "latest": {
+        "title": "Latest",
+        "description": "Information about the latest item on the group",
+        "type": "object",
+        "properties": {
+          "user": {
+            "title": "User",
+            "description": "User who has created the latest item. For example file, or message posted on the group.",
+            "type": "string",
+            "displayOrder": 1
+          },
+          "old_name": {
+            "title": "Old name",
+            "description": "Old name of the group",
+            "type": "string",
+            "displayOrder": 2
+          },
+          "name": {
+            "title": "Name",
+            "description": "New name of the group",
+            "type": "string",
+            "displayOrder": 3
+          },
+          "type": {
+            "title": "Type",
+            "description": "Type of the latest item. For example file, or message posted on the group.",
+            "type": "string",
+            "displayOrder": 4
+          },
+          "subtype": {
+            "title": "Subtype",
+            "description": "Subtype of the latest item. For example file, or message posted on the group.",
+            "type": "string",
+            "displayOrder": 5
+          },
+          "text": {
+            "title": "Text",
+            "description": "Text of the latest item",
+            "type": "string",
+            "displayOrder": 6
+          },
+          "ts": {
+            "title": "Timestamp",
+            "description": "Specifies the latest timestamp",
+            "type": "string",
+            "displayOrder": 7
+          }
+        },
+        "additionalProperties": false,
+        "displayOrder": 14
+      },
+      "unread_count": {
+        "title": "Unread count",
+        "description": "A full count of visible messages that the calling user has yet to read",
+        "type": "number",
+        "displayOrder": 8
+      },
+      "unread_count_display": {
+        "title": "Unread count display",
+        "description": "A count of messages that the calling user has yet to read that matter to them (this means it excludes things like join/leave messages)",
+        "type": "number",
+        "displayOrder": 9
+      },
+      "members": {
+        "title": "Members",
+        "description": "All users belonging to the particular group",
+        "type": "array",
+        "items": {},
+        "displayOrder": 10
+      },
+      "topic": {
+        "title": "Topic",
+        "description": "Information about the private channel topic",
+        "type": "object",
+        "properties": {
+          "value": {
+            "title": "Value",
+            "description": "Name of the current topic",
+            "type": "string",
+            "displayOrder": 1
+          },
+          "creator": {
+            "title": "Creator",
+            "description": "User who has created the current topic",
+            "type": "string",
+            "displayOrder": 2
+          },
+          "last_set": {
+            "title": "Last set",
+            "description": "Unix time stamp of the last set topic",
+            "type": "string",
+            "displayOrder": 3
+          }
+        },
+        "additionalProperties": false,
+        "displayOrder": 11
+      },
+      "purpose": {
+        "title": "Purpose",
+        "description": "Purpose of the group",
+        "type": "object",
+        "properties": {
+          "value": {
+            "title": "Purpose",
+            "description": "Information about the private channel purpose",
+            "type": "string",
+            "displayOrder": 1
+          },
+          "creator": {
+            "title": "Creator",
+            "description": "User who has created the current purpose",
+            "type": "string",
+            "displayOrder": 2
+          },
+          "last_set": {
+            "title": "Last set",
+            "description": "Unix time stamp of the last set purpose",
+            "type": "string",
+            "displayOrder": 3
+          }
+        },
+        "additionalProperties": false,
+        "displayOrder": 12
+      },
+      "is_channel": {
+        "title": "Is channel",
+        "description": "Is channel",
+        "type": "boolean",
+        "displayOrder": 9007199254740991
+      },
+      "is_im": {
+        "title": "Is im",
+        "description": "Is im",
+        "type": "boolean",
+        "displayOrder": 9007199254740991
+      },
+      "is_private": {
+        "title": "Is private",
+        "description": "Is private",
+        "type": "boolean",
+        "displayOrder": 9007199254740991
+      },
+      "is_general": {
+        "title": "Is general",
+        "description": "Is general",
+        "type": "boolean",
+        "displayOrder": 9007199254740991
+      },
+      "unlinked": {
+        "title": "Unlinked",
+        "description": "Unlinked",
+        "type": "number",
+        "displayOrder": 9007199254740991
+      },
+      "name_normalized": {
+        "title": "Name normalized",
+        "description": "Name normalized",
+        "type": "string",
+        "displayOrder": 9007199254740991
+      },
+      "is_shared": {
+        "title": "Is shared",
+        "description": "Is shared",
+        "type": "boolean",
+        "displayOrder": 9007199254740991
+      },
+      "is_org_shared": {
+        "title": "Is org shared",
+        "description": "Is org shared",
+        "type": "boolean",
+        "displayOrder": 9007199254740991
+      },
+      "is_pending_ext_shared": {
+        "title": "Is pending ext shared",
+        "description": "Is pending ext shared",
+        "type": "boolean",
+        "displayOrder": 9007199254740991
+      },
+      "pending_shared": {
+        "title": "Pending shared",
+        "description": "Pending shared",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "displayOrder": 9007199254740991
+      },
+      "context_team_id": {
+        "title": "Context team id",
+        "description": "Context team id",
+        "type": "string",
+        "displayOrder": 9007199254740991
+      },
+      "updated": {
+        "title": "Updated",
+        "description": "Updated",
+        "type": "number",
+        "displayOrder": 9007199254740991
+      },
+      "parent_conversation": {
+        "title": "Parent conversation",
+        "description": "Parent conversation",
+        "nullable": true,
+        "type": "string",
+        "displayOrder": 9007199254740991
+      },
+      "is_ext_shared": {
+        "title": "Is ext shared",
+        "description": "Is ext shared",
+        "type": "boolean",
+        "displayOrder": 9007199254740991
+      },
+      "shared_team_ids": {
+        "title": "Shared team ids",
+        "description": "Shared team ids",
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "displayOrder": 9007199254740991
+      },
+      "pending_connected_team_ids": {
+        "title": "Pending connected team ids",
+        "description": "Pending connected team ids",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "displayOrder": 9007199254740991
+      },
+      "is_member": {
+        "title": "Is member",
+        "description": "Is member",
+        "type": "boolean",
+        "displayOrder": 9007199254740991
+      },
+      "num_members": {
+        "title": "Num members",
+        "description": "Num members",
+        "type": "number",
+        "displayOrder": 9007199254740991
+      }
+    },
+    "title": "group",
+    "required": [
+      "name"
+    ],
+    "additionalProperties": false
+  },
+  "type": "array",
+  "title": "group"
+}

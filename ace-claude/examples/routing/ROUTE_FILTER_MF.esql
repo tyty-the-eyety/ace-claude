@@ -1,0 +1,54 @@
+-- A Filter node's expression lives in a FILTER MODULE, not a COMPUTE MODULE,
+-- and Main() returns BOOLEAN. Three-valued logic picks the terminal:
+--   TRUE    -> OutTerminal.true
+--   FALSE   -> OutTerminal.false
+--   UNKNOWN -> OutTerminal.unknown   (any comparison against NULL)
+CREATE FILTER MODULE ROUTE_FILTER_MF_Check
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- NOTE: `Root`, not `InputRoot`. A Filter node has no output message, so
+		-- the Input*/Output* correlation names do not exist here — only
+		-- Root, Body, Properties, Environment, LocalEnvironment, ExceptionList
+		-- and DestinationList are in scope (BIP2432E otherwise).
+		-- No COALESCE on purpose: a missing "amount" makes this UNKNOWN rather
+		-- than FALSE, which is how the unknown terminal gets exercised.
+		RETURN Root.JSON.Data.amount > 100;
+	END;
+
+END MODULE;
+
+CREATE COMPUTE MODULE ROUTE_FILTER_MF_True
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.terminal = 'true';
+		SET OutputRoot.JSON.Data.amount   = InputRoot.JSON.Data.amount;
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+CREATE COMPUTE MODULE ROUTE_FILTER_MF_False
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.terminal = 'false';
+		SET OutputRoot.JSON.Data.amount   = InputRoot.JSON.Data.amount;
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+CREATE COMPUTE MODULE ROUTE_FILTER_MF_Unknown
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.terminal = 'unknown';
+		RETURN TRUE;
+	END;
+
+END MODULE;

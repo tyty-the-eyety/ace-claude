@@ -1,0 +1,12 @@
+eclipse.preferences.version=1
+encoding/<project>=UTF-8
+encoding/TIMER_SCHED_INTERVAL_MF.msgflow=UTF-8
+encoding/TIMER_SCHED_CRON_MF.msgflow=UTF-8
+encoding/TIMER_AUTO_MF.msgflow=UTF-8
+encoding/TIMER_CONTROL_MF.msgflow=UTF-8
+encoding/TIMER_CONTROL_MF.esql=UTF-8
+encoding/TIMER_FIRE_MF.msgflow=UTF-8
+encoding/TIMER_SCHED_CRON_WEEKEND_MF.msgflow=UTF-8
+encoding/TIMER_CANCEL_MF.msgflow=UTF-8
+encoding/TIMER_CANCEL_MF.esql=UTF-8
+encoding/TIMER_POLICY_MF.msgflow=UTF-8

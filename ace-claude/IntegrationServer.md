@@ -269,6 +269,78 @@ grep "<JS>" integration_server.<name>.trace.0.txt \
 were a secret — `MESSAGE WAS REDACTED AS IT CONTAINED SECRETS (Key)`. The value
 is not recoverable from the trace.
 
+## Vaults: work-dir vs external directory (runtime-verified)
+
+Two separate stores, two separate key flags. Credentials referenced by a
+connector policy can live in **either** — the policy only matches on credential
+*name* and *type*, not location.
+
+| | work-dir vault | external directory vault |
+|---|---|---|
+| lives in | `<work-dir>/config/...` | any directory you choose |
+| create | `mqsivault --work-dir <wd> --create --vault-key <k>` | `mqsivault --ext-vault-dir <d> --create --ext-vault-key <k>` |
+| address it with | `--work-dir <wd>` | `--ext-vault-dir <d>` |
+| key flag | `--vault-key` | `--ext-vault-key` |
+| server start | `--vault-key <k>` | `--ext-vault-key <k>` |
+| server also needs | — | `Credentials.ExternalDirectoryVault.directory` in `server.conf.yaml` |
+
+The external one is for sharing credentials across several servers/nodes. Point a
+server at it in `server.conf.yaml`:
+
+```yaml
+Credentials:
+  ExternalDirectoryVault:
+    directory: '/path/to/extdirvault'
+```
+
+Writing a credential is the same command either way, only the connectionSpec and
+key flag change:
+
+```bash
+mqsicredentials --work-dir <wd>       --vault-key <k>     --create --credential-type slack ...
+mqsicredentials --ext-vault-dir <d>   --ext-vault-key <k> --create --credential-type slack ...
+```
+
+Useful commands: `--report` (lists names/types, no secrets), `--set-as-default`
+per credential type, `--export`/`--import` to move credentials between vaults as
+an encrypted zip (`--archive-location` + `--archive-key`), and
+`mqsivault --verify-key` to test a key without changing anything.
+
+### A forgotten vault key is unrecoverable
+
+`store.yaml` holds an `aes_256_cbc` key derived from the password. There is no
+recovery path, and a keyless read is refused outright:
+
+```
+BIP15158E: To administer credentials in an integration server vault or integration
+           node vault, you must specify a vault access key ... To administer
+           credentials in an external directory vault, you must supply an external
+           directory vault access key.
+```
+
+The only options are to remember it or `mqsivault --destroy` and recreate,
+losing every credential in that vault. **Store the key in a `.mqsivaultrc`** so
+this cannot happen:
+
+```bash
+mqsivault --vaultrc-store-ext-key --ext-vault-dir <d> --ext-vault-key <k>   # external
+mqsivault --work-dir <wd> --vaultrc-store-key --vault-key <k>               # work-dir
+mqsivault --vaultrc-store-default-key --vault-key <k>                       # default for all
+```
+
+`--vaultrc-location <dir>` chooses where the file goes; commands then find the
+key without `--vault-key` on the command line. Note that any credential in the
+old vault stays stranded — a `.mqsivaultrc` written later cannot open a vault
+whose key is already lost.
+
+### Recovering from a lost key without touching the old vault
+
+A stranded vault does not have to block work: give the test server its own
+work-dir vault and recreate just the credentials the flow needs. Proven on
+2026-09-13 when an external vault's password was forgotten — a fresh
+`mqsivault --work-dir ... --create` plus one `mqsicredentials --create` had the
+Slack flow running, with the old external vault left untouched for later.
+
 ## Source
 Built from the IBM App Connect Enterprise 13.0.x *IntegrationServer command*
 reference. Most parameters apply to ACE 12 as well; confirm newer ones

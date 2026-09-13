@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><policies><policy policyName="Slack1" policyTemplate="online_v1_basic_oauth" policyType="slack"><applicationType>online</applicationType><applicationVersion>v1</applicationVersion><authenticationMethod>BASIC_OAUTH</authenticationMethod><credentialName>SLACK_DEMO_POLICIES_Slack1</credentialName></policy></policies>

@@ -1,0 +1,11 @@
+CREATE COMPUTE MODULE ROUTE_ORDER_MF_Reply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.status = 'both branches ran';
+		SET OutputRoot.JSON.Data.note   = 'check routinglogs/order.log for the order';
+		RETURN TRUE;
+	END;
+
+END MODULE;

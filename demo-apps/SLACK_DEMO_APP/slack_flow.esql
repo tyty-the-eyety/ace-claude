@@ -1,0 +1,40 @@
+CREATE COMPUTE MODULE slack_flow_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+
+		-- The Slack connector returns its result set as repeated Item children
+		-- under InputRoot.JSON.Data. A JSON array MUST be created with
+		-- IDENTITY (JSON.Array) and populated via Item[i] — assigning the array
+		-- directly, or using a bare [i], produces invalid JSON.
+		DECLARE n INTEGER CARDINALITY(InputRoot.JSON.Data.Item[]);
+		CREATE FIELD OutputRoot.JSON.Data.channels IDENTITY (JSON.Array)channels;
+		DECLARE i INTEGER 1;
+		WHILE i <= n DO
+			SET OutputRoot.JSON.Data.channels.Item[i].id         = InputRoot.JSON.Data.Item[i].id;
+			SET OutputRoot.JSON.Data.channels.Item[i].name       = InputRoot.JSON.Data.Item[i].name;
+			SET OutputRoot.JSON.Data.channels.Item[i].isArchived = InputRoot.JSON.Data.Item[i].is_archived;
+			SET i = i + 1;
+		END WHILE;
+
+		SET OutputRoot.JSON.Data.count = n;
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+-- The connector node routes a zero-result RETRIEVEALL to OutTerminal.noData.
+-- Leaving that terminal unwired turns "nothing matched" into an exception
+-- (BIP9975E "No documents found"), which surfaced here as an HTTP 404.
+CREATE COMPUTE MODULE slack_flow_NoData
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		CREATE FIELD OutputRoot.JSON.Data.channels IDENTITY (JSON.Array)channels;
+		SET OutputRoot.JSON.Data.count = 0;
+		RETURN TRUE;
+	END;
+
+END MODULE;

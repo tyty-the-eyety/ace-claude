@@ -1,0 +1,35 @@
+CREATE COMPUTE MODULE ROUTE_XPATH_MF_Gold
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.terminal = 'gold';
+		SET OutputRoot.JSON.Data.score    = InputRoot.JSON.Data.score;
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+CREATE COMPUTE MODULE ROUTE_XPATH_MF_Silver
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.terminal = 'silver';
+		SET OutputRoot.JSON.Data.score    = InputRoot.JSON.Data.score;
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+CREATE COMPUTE MODULE ROUTE_XPATH_MF_Default
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.terminal = 'default';
+		SET OutputRoot.JSON.Data.score    = InputRoot.JSON.Data.score;
+		RETURN TRUE;
+	END;
+
+END MODULE;

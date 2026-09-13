@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<policies>
+  <policy policyType="Timer" policyName="TickPlain" policyTemplate="Timer">
+    <queuePrefix/>
+    <timeoutInterval>3</timeoutInterval>
+  </policy>
+</policies>

@@ -1,0 +1,30 @@
+CREATE COMPUTE MODULE TIMER_CANCEL_MF_Cancel
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE reqId CHARACTER COALESCE(InputRoot.JSON.Data.requestId, 'req-default');
+
+		-- A CANCEL needs only Action and Identifier; the identifier has to match
+		-- the one used by the SET, on a TimeoutControl node with the same
+		-- uniqueIdentifier as the node that set it.
+		SET OutputLocalEnvironment.TimeoutRequest.Action     = 'CANCEL';
+		SET OutputLocalEnvironment.TimeoutRequest.Identifier = reqId;
+
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.requestId = reqId;
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+CREATE COMPUTE MODULE TIMER_CANCEL_MF_Ack
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.status    = 'cancelled';
+		SET OutputRoot.JSON.Data.requestId = InputRoot.JSON.Data.requestId;
+		RETURN TRUE;
+	END;
+
+END MODULE;

@@ -78,6 +78,9 @@ dev-server work dir, vault key, queue manager, DSN).
 | LDAP connector: search, create, update, delete entries | `LDAP_DEMO_APP` + `LDAP_DEMO_POLICIES` | `examples/ldap/` |
 | MQ publish/subscribe: MQOutput-via-alias and Publication node, admin subscription | `MQ_PUBSUB_APP` | `examples/mqpubsub/` |
 | MQTT publish/subscribe against Mosquitto | `MQTT_DEMO_APP` | `examples/mqtt/` |
+| Timer nodes: Scheduler (interval + cron), TimeoutNotification (automatic + controlled), TimeoutControl set/cancel, Timer policy | `TIMER_DEMO_APP` + `TIMER_DEMO_POLICIES` | `Timer.md`, `examples/timer/` |
+| Routing nodes: Route, Filter, RouteToLabel + Label, FlowOrder | `ROUTING_DEMO_APP` | `examples/routing/` |
+| Slack connector: list private channels, send message | `SLACK_DEMO_APP` + `SLACK_DEMO_POLICIES` | `Slack.md`, `examples/slack/` |
 
 > **Connector scope.** All six Amazon S3 actions in the table are
 > runtime-verified against a real bucket. Filter-driven actions (list, delete)

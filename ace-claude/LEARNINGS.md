@@ -711,3 +711,267 @@ Eclipse Mosquitto 2, Toolkit-validated (0 problems).
 - Mosquitto 2.x listens only on localhost inside its container unless given a
   config with `listener 1883 0.0.0.0` and `allow_anonymous true` — without it the
   broker looks up but nothing can connect.
+
+## Timer family: Scheduler, TimeoutNotification, TimeoutControl
+
+Full runbook in `Timer.md`, copy-ready flows in `examples/timer/`, proof app
+`TIMER_DEMO_APP`. All three nodes come from `server/lil/imbtimer.lil`.
+
+- **`requiresMQ="false"` in `MessageFlow.xsd` is only half true.** It holds for
+  the Scheduler and for **automatic**-mode TimeoutNotification, both of which run
+  on a bare server. **Controlled** mode does need a queue manager — the timeout
+  store is `SYSTEM.BROKER.TIMEOUT.QUEUE` — and without `defaultQueueManager` in
+  `server.conf.yaml` both the TimeoutControl flow and the controlled
+  TimeoutNotification flow refuse to start with `BIP2685E`. Same trap, same BIP
+  code, as the EDA nodes.
+- **Scheduler `scheduleType` is `interval`, NOT `repeatInterval` — and here the
+  `.msgnode` is the wrong source.** `ComIbmScheduler.msgnode` declares the enum
+  literal `repeatInterval` and its `.properties` labels it "Repeat Interval", but
+  the runtime rejects it: `BIP5064E ... invalid schedule type 'repeatinterval'`.
+  `MessageFlow.xsd` (`scheduleTypeType` = `interval` | `calendar`) is right. This
+  reverses the usual order of trust for node properties, so for Scheduler enums
+  check the XSD, not the Toolkit definition.
+- **ACE's cron is neither Unix cron nor Quartz, and it is literals-only.** Five
+  fields `<minute> <hour> <day-of-month> <month> <day-of-week>`; minute must be a
+  literal 0-59 (`*` is rejected), hour and day-of-month take a literal or `*`,
+  and **month and day-of-week must both be `*`**. No lists, ranges, steps,
+  names, `?`, or 6-field forms — every one fails at flow start with `BIP5063E`.
+  Proven by deploying one flow per expression and reading the startup log; the
+  matrix is in `Timer.md`. Two design consequences: **the finest calendar
+  granularity is hourly** (sub-hourly needs `scheduleType="interval"`), and
+  month selection is simply not expressible.
+- **`days` works in `interval` mode and is ignored in `calendar` mode.** With
+  `interval`, `days="SAT,SUN"` on a Friday stayed silent for 2.5 minutes as
+  intended. With `calendar`, flows with `days="FRI"`, `days="SAT,SUN"`,
+  `days="SUN"` and all-seven all fired at the same scheduled minute on a Friday.
+  So a cron schedule cannot be restricted to weekdays by either the expression
+  (day-of-week must be `*`) or the property — filter in the flow.
+- **Two calendar Scheduler nodes on the same minute make each other fire
+  twice.** A calendar flow that owns its fire minute is exact: one propagation,
+  `currentEventTime` = `HH:MM:00.000`. Put a second calendar Scheduler on the
+  *same* minute in the same integration server and at least one of them gets an
+  extra propagation stamped 1 ms early, `HH:MM-1:59.999` — with four such flows
+  the counts ran 2, 2, 4, 4 and varied between runs. Give each calendar Scheduler
+  its own minute, or make the flow idempotent. Interval mode was exact throughout
+  (10s ticks, one each).
+- **The Compute that writes a timeout request needs
+  `computeMode="destinationAndMessage"`.** The LocalEnvironment compute mode is
+  spelled `destination`; the full enum is `message`, `destination`,
+  `destinationAndMessage`, `exception`, `exceptionAndMessage`,
+  `exceptionAndDestination`, `all`. There is no `localEnvironment*` literal, and
+  an invalid value is accepted silently by `ibmint package` **and** by the
+  runtime, which quietly falls back to message-only propagation. The symptom is
+  at the wrong node: `BIP4601E ... failed to navigate to the message location
+  specified ... 'InputLocalEnvironment.TimeoutRequest'`.
+- **The message handed to TimeoutControl must carry an `MQMD`, or nothing is
+  stored.** The timeout still fires exactly on time, and the controlled
+  TimeoutNotification then dies on an empty bitstream: `BIP4621E` + `BIP5902W`
+  ("The data being parsed was 'Null Buffer'") + `BIP6105E` ("remaining bitstream
+  is too small to contain an 'MQMD' structure"). Three lines of ESQL
+  (`OutputRoot.MQMD.Version`/`.Format`/`.CodedCharSetId`) fix it, and with the
+  MQMD present the body round-trips with its domain intact even when the node's
+  `messageDomain` is blank.
+- **Leave `storedMessageLocation` blank.** Blank stores and replays the whole
+  message unchanged; setting it to `InputRoot` nests the body one level deeper
+  (`Root.JSON.Data.Data.*`). It is a **Field-Reference**, so `$Body` fails at
+  flow start: `BIP2211E ... valid values are 'Field-Reference'`.
+- **`StartDate`/`StartTime` are absolute and `Interval` is not a delay.**
+  `'TODAY'`/`'NOW'` fires immediately whatever `Interval` says — `Interval` is
+  only the gap between fires when `Count > 1`. For "in N seconds", compute
+  `CURRENT_TIMESTAMP + CAST(n AS INTERVAL SECOND)` and format it
+  `'yyyy-MM-dd'` / `'HH:mm:ss'`. Proven: request 08:35:30 → fired 08:35:45.
+  `Action='CANCEL'` + `Identifier` on a TimeoutControl node with the same
+  `uniqueIdentifier` removes a pending request (proven: a 30s timeout cancelled
+  immediately never fired).
+- **Automatic-mode TimeoutNotification propagates an empty message** — `Root`
+  has only `Properties`, no body parser. The tick metadata is in
+  `LocalEnvironment.TimeoutRequest`, where `Identifier` is the node's
+  `uniqueIdentifier` and `Interval` its `timeoutInterval`. The Scheduler instead
+  gives you a real body: `Root.JSON.Data` **and** `LocalEnvironment.Scheduler`,
+  each with `lastEventTime`, `currentEventTime`, `scheduleIdentifier`.
+- **Trace node `pattern` takes ESQL field references with dots.** An XPath-style
+  `${LocalEnvironment/Scheduler/currentEventTime}` stops the flow starting with
+  `BIP2432E: The correlation name 'Scheduler' is not valid`. A Trace node with
+  `destination="file"` is a better tick logger than FileOutput for this kind of
+  proof — it appends immediately instead of buffering in `mqsitransit/`.
+
+### Timer policy (prompted by a Toolkit-generated `timer.policyxml`)
+
+- **`queuePrefix` is an INFIX, not a prefix.** `<queuePrefix>test</queuePrefix>`
+  gives `SYSTEM.BROKER.TIMEOUT.test.QUEUE` — the value lands before `.QUEUE`. It
+  is case-sensitive, so `runmqsc` needs the name quoted
+  (`DISPLAY QLOCAL('SYSTEM.BROKER.TIMEOUT.test.QUEUE')`); unquoted, runmqsc
+  uppercases it and says AMQ8147E not found while `DISPLAY QLOCAL(*)` clearly
+  lists it.
+- **ACE defines the PREFIXED queue itself at flow start, and only that one.**
+  Two fresh prefixes both produced a queue whose `CRDATE`/`CRTIME` matched the
+  flow-start instant, with `DEFPSIST(YES) MAXDEPTH(100000) MAXMSGL(104857600)` —
+  versus `NO / 5000 / 4194304` inherited from `SYSTEM.DEFAULT.LOCAL.QUEUE`, so
+  it is a deliberate `DEFINE` and not default inheritance. It makes sense as the
+  exception: nothing could pre-create a queue whose name you invent in a policy.
+  **It does not generalise.** The `SYSTEM.BROKER.*` set is provisioned by
+  creating an *integration node* against a queue manager; a **standalone
+  integration server provisions nothing**, which is what
+  `server/sample/wmq/iib_queues_create.mqsc` is for. Corroborated locally: on a
+  hand-created queue manager, `SYSTEM.BROKER.TIMEOUT.QUEUE`'s `CRDATE` matched
+  the day that script was run for the EDA work, **not** the day the queue
+  manager itself was created. A prefix is how you give one application its own
+  timeout store.
+- **The Timer policy does NOT change the MQ requirement**, even though
+  `Policy.xsd` annotates `ComIbmTimerPolicyType` `requiresMQ="true"`.
+  `operationMode` alone decides: with `defaultQueueManager` commented out, all
+  three automatic-mode flows started and ticked — including two carrying a
+  `queuePrefix` policy — while both controlled-mode flows failed `BIP2685E`.
+- **The policy attaches to controlled mode too**, not just automatic, and a
+  controlled pair still pairs through the policy reference as long as both nodes
+  name the same policy in `uniqueIdentifier`. `timeoutInterval` overrides the
+  node's (node 30 + policy 3 → 3s ticks; node 30 + policy 5 → 5s ticks).
+- **The Scheduler node takes no policy at all** — `ComIbmSchedulerNodeType` has
+  no `<links operationalPolicy=...>` in MessageFlow.xsd, unlike both timeout
+  node types. Everything about a Scheduler is node properties or a BAR override.
+- **The Timer policy has exactly two properties**, `queuePrefix` and
+  `timeoutInterval`, both `iib:dynamic="false"` — a change needs a restart.
+- **`policyTemplate="Timer"` is what the Toolkit writes** (settles a question
+  open since): the attribute carries the policy *type* name. The
+  hand-written `policyTemplate=""` in this skill's templates and the shipped
+  IBM templates' omission of the attribute both also deploy and run.
+
+## Routing nodes: Filter, RouteToLabel/Label, FlowOrder
+
+Copy-ready flows in `examples/routing/`, proof app `ROUTING_DEMO_APP`. The Route
+node was already proven (`MQ_ROUTE_APP`); these are the rest of the
+`noderouting` family, minus DatabaseRoute. **None of them needs MQ, a database
+or any external service** — five HTTP flows on a bare standalone server, which
+makes this the cheapest capability folder to re-verify.
+
+- **A Filter node's ESQL is a `CREATE FILTER MODULE`, not a COMPUTE MODULE**, and
+  inside it **`InputRoot` does not exist — use `Root`.** A Filter has no output
+  message, so none of the `Input*`/`Output*` correlation names are in scope; only
+  `Root`, `Body`, `Properties`, `Environment`, `LocalEnvironment`,
+  `ExceptionList`, `DestinationList` are. This one is nastier than the usual
+  msgflow mistakes because it fails at **deploy** and takes the **whole
+  application** down rather than the single flow:
+  `BIP9318E: Request to 'PreSetupValidate' resource '<APP>' ... failed` +
+  `BIP2432E: The correlation name 'InputRoot.JSON.Data.amount' is not valid.`
+  Contrast the timer nodes, where a bad node property gives a per-flow
+  `BIP9320E` and the rest of the app still starts.
+- **The Filter node's `unknown` terminal is ESQL three-valued logic, not an error
+  path.** A comparison against a missing field yields UNKNOWN, so it routes to
+  `unknown`, not `false`. Proven: `{"amount":150}`→true, `{"amount":50}`→false,
+  `{}`→unknown. Either wire the terminal or `COALESCE` the field.
+- **RouteToLabel has no `out` terminal (only `in` + `failure`) and Label has no
+  `in` terminal (only `out`).** They are never wired together — the runtime jumps
+  from one to the other by name, which means a correct flow looks disconnected in
+  the Toolkit.
+- **The label list is `LocalEnvironment.Destination.RouterList.DestinationData[n].labelName`,
+  a structure in NO product schema** — `LocalEnvironment.schema.json` types
+  `RouterList` as a bare `{"type":"object"}`. Same class of undocumented
+  convention as the Collector table rows and the DatabaseRetrieve grid. The
+  Compute that writes it needs `computeMode="destinationAndMessage"`.
+- **`mode` takes exactly one entry from that list**: `routeToFirst` → entry 1,
+  `routeToLast` → entry 2 of a two-entry list (proven side by side with identical
+  lists). An **empty or absent list throws** rather than falling through:
+  `BIP4256E: The RouteToLabel node '<name>' was unable to locate a 'labelName'
+  element in the local environment.`
+- **FlowOrder has no properties at all** and genuinely serialises the branches:
+  two chained Trace nodes on `first` plus one on `second`, all appending to one
+  file, came out `FIRST-step1 → FIRST-step2 → SECOND`. Both branches get the same
+  message, so put a reply node on one branch only.
+- **Route node rule order is first-match-in-table-order** with
+  `distributionMode="first"`: a score of 95 satisfied both `> 80` (gold) and
+  `> 50` (silver) and took gold, the rule listed first. List the narrowest rule
+  first. A missing field matches nothing and falls to `default` with no
+  exception. Also confirmed the node works on JSON (`$Root/JSON/Data/score`), not
+  just MQMD as in the older MQ example.
+
+## Slack connector (RETRIEVEALL + CREATE runtime-proven)
+
+Runbook in `Slack.md`, copy-ready flows in `examples/slack/`, proof app
+`workspace2/test_app` + `workspace2/SLACK_POL`. Both `.msgnode` files sit at the
+**root** of `com.ibm.etools.mft.connectornodes.definitions_13.0.2.2.jar`, so the
+`xmlns` URI is the bare filename (no slash path, unlike Kafka).
+
+- **The request node has a FOURTH terminal, `OutTerminal.noData`, and leaving it
+  unwired turns an empty result set into an exception.** A zero-result
+  `RETRIEVE*` routes there; unconnected it gives
+  `BIP2230E` + `BIP9975E: No documents found`, which over HTTP surfaces as a
+  **404** — nothing about that says "your query matched zero rows". Wire it to a
+  Compute returning an empty collection. **Assume this applies to every
+  connector retrieve, not just Slack's** — the S3 and LDAP pages predate the
+  finding and don't mention it.
+- **A `CREATE` action requires its `gen/<prefix>.request.schema.json` to exist;
+  a `RETRIEVEALL` does not.** Missing it fails at FLOW START with `BIP9958E`
+  naming the exact path. Content can be `{}` — but not zero bytes, which is the
+  separate `BIP5753E` already recorded for S3.
+- **`OBJECT_NAME` is the "parent discriminator" and is mandatory on `CREATE`**,
+  even though the connector's own model lists both `OBJECT_NAME` and `OBJECT_ID`
+  in the interaction's `basic` set. Without it:
+  `BIP9937E ... 'Error: Parent discriminator connector property OBJECT_NAME -
+  not found in body or filter'`. For `message` it is the channel. Both go in the
+  request **body**, not a `<connectorProperty/>` row — consistent with the
+  earlier S3 note that a property belongs in the body when no such row exists.
+- **`queryProperties` needs `limit`, not just `allowTruncation`** — same
+  silently-returns-one-record trap as S3.
+- **`policyType="slack"` is not in `Policy.xsd`.** Connector policy types are
+  validated from the connector descriptors, so don't go looking for them in the
+  policy schema. `authenticationMethod` maps to a field in
+  `loopback-connector-slack/descriptors/slack.json`: `BASIC_OAUTH` →
+  `access_token_basic`, `OAUTH2_WEB` → `access_token`; **both are just a static
+  access token**, neither takes a client id/secret or refresh token.
+- **The `slack` vault credential type has exactly one property,
+  `--access-token`** — no `--refresh-token` (compare `anaplan`, which has a
+  four-property oauth variant). ACE therefore cannot rotate a Slack token: a
+  rotating one must be re-entered by hand.
+- **The authoritative object/action list is the connector's own model, not the
+  docs:** `server/nodejs_all/node_modules/@ibm-app-connect/loopback-connector-<name>/overrides/objects.json`
+  for objects and interactions, `lib/models/<object>.json` for each
+  interaction's `requestProperties.mandatory` / `responseProperties.included` and
+  its `filterSupport`. This is the connector equivalent of reading node
+  definitions out of the Toolkit jar, and it answered every "what does this
+  action accept" question in this session.
+- **Read `filterSupport` before building a retrieve flow.** Slack's
+  `message`/`RETRIEVEALL` declares `mandatory: ["query"]`, which maps to Slack
+  *search* rather than `conversations.history` — and search rejects bot tokens
+  (`not_allowed_token_type`), so that action is unreachable with `xoxb-`
+  regardless of `groups:history`. Checking the model first avoided building a
+  flow that could never work.
+
+### Slack-side facts that present as ACE faults
+
+- **Slack tokens: `xoxe.xoxp-`/`xoxe-` are App Configuration Tokens** from the
+  panel at the bottom of the apps list — scoped
+  `identify, app_configurations:read/write`, ~12h expiry, useless for workspace
+  data. The usable ones are `xoxb-`/`xoxp-` from the app's **OAuth &
+  Permissions** page. Prefix test: **if it starts `xoxe`, wrong panel.** Always
+  check scopes before wiring a token in:
+  `curl -s -X POST https://slack.com/api/auth.test -D - -o /dev/null -H "Authorization: Bearer $T" | grep -i x-oauth-scopes`
+- **Adding scopes and reinstalling widens the existing token in place** — it does
+  not necessarily issue a new string. Observed: the same `xoxb-` gained
+  `chat:write, groups:history` after a reinstall and the vault needed no change.
+  Check the old token's scopes before going to fetch a new one.
+- **`channel` = public channels, `group` = private channels** in Slack's object
+  model. A bot in a public channel never appears in a `group` query.
+- **Private channels are invisible to non-members in both directions.** A bot
+  with `groups:read` sees only ones it was *invited* to, so `count: 0` is often
+  the correct answer rather than a bug; and a channel created by the bot via
+  `conversations.create` has the bot as its only member, so it does not appear in
+  your own Slack until `conversations.invite` adds you.
+
+### `mqsicreatebar` silently produces an empty BAR for connector-node apps
+
+- **Connector nodes cannot be compiled to CMF, so `mqsicreatebar` needs
+  `-deployAsSource`.** Without it the build reports **zero** `Problem N:` lines —
+  the marker count we normally read as the verdict — exits non-zero, and writes a
+  BAR containing only `META-INF`. The cause is logged separately, not as a
+  problem marker:
+  ```
+  The message flow contains a ComIbmApplicationConnectorRequest_slack.msgnode
+  which cannot be added as CMF. You cannot use the compile and in-line resource
+  option for this message flow.
+  [ERROR] { Error adding to BAR Model. fileToAdd: L/test_app/slack_flow.msgflow }
+          - com.ibm.etools.mft.bar.model.BrokerArchiveException
+  ```
+  With `-deployAsSource` the same workspace builds clean (exit 0, `test_app.appzip`
+  present, 0 markers). **Always check the BAR actually contains `<APP>.appzip`**
+  rather than trusting a zero-marker result — this is the one case found so far
+  where "no problems" and "nothing built" look identical.

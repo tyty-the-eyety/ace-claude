@@ -1,0 +1,51 @@
+CREATE COMPUTE MODULE TIMER_CONTROL_MF_SetRequest
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		DECLARE delaySecs INTEGER COALESCE(InputRoot.JSON.Data.delaySeconds, 10);
+		DECLARE reqId     CHARACTER COALESCE(InputRoot.JSON.Data.requestId, 'req-default');
+
+		-- StartDate/StartTime are the ABSOLUTE moment of the first timeout.
+		-- 'TODAY'/'NOW' means "fire immediately" - to delay by N seconds you
+		-- have to compute the wall-clock time yourself.
+		DECLARE fireAt TIMESTAMP CURRENT_TIMESTAMP + CAST(delaySecs AS INTERVAL SECOND);
+
+		-- The timeout request itself. TimeoutControl reads it from its
+		-- requestLocation, which defaults to InputLocalEnvironment.TimeoutRequest.
+		SET OutputLocalEnvironment.TimeoutRequest.Action         = 'SET';
+		SET OutputLocalEnvironment.TimeoutRequest.Identifier     = reqId;
+		SET OutputLocalEnvironment.TimeoutRequest.StartDate      = CAST(fireAt AS CHARACTER FORMAT 'yyyy-MM-dd');
+		SET OutputLocalEnvironment.TimeoutRequest.StartTime      = CAST(fireAt AS CHARACTER FORMAT 'HH:mm:ss');
+		SET OutputLocalEnvironment.TimeoutRequest.Interval       = delaySecs;
+		SET OutputLocalEnvironment.TimeoutRequest.Count          = 1;
+		SET OutputLocalEnvironment.TimeoutRequest.IgnoreMissed   = 'TRUE';
+		SET OutputLocalEnvironment.TimeoutRequest.AllowOverwrite = 'TRUE';
+
+		-- This is the message that gets stored and replayed when the timeout fires.
+		-- The timeout store is an MQ queue, so the tree MUST carry an MQMD or
+		-- nothing is stored and the notification node fails with BIP6105E.
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.MQMD.Version        = 2;
+		SET OutputRoot.MQMD.Format         = 'MQSTR';
+		SET OutputRoot.MQMD.CodedCharSetId = 1208;
+		SET OutputRoot.JSON.Data.requestId   = reqId;
+		SET OutputRoot.JSON.Data.payload     = COALESCE(InputRoot.JSON.Data.payload, 'no payload');
+		SET OutputRoot.JSON.Data.scheduledAt = CAST(CURRENT_TIMESTAMP AS CHARACTER);
+		SET OutputRoot.JSON.Data.delaySeconds = delaySecs;
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+CREATE COMPUTE MODULE TIMER_CONTROL_MF_Ack
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.status        = 'scheduled';
+		SET OutputRoot.JSON.Data.requestId     = InputRoot.JSON.Data.requestId;
+		SET OutputRoot.JSON.Data.firesInSeconds = InputRoot.JSON.Data.delaySeconds;
+		RETURN TRUE;
+	END;
+
+END MODULE;

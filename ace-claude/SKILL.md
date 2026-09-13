@@ -31,6 +31,9 @@ each has its own README with the gotchas). Prefer these:
 | `examples/ldap/` | LDAP connector — search / create / update / delete | `LDAP_DEMO_APP` |
 | `examples/mqpubsub/` | MQ publish/subscribe, both publish routes | `MQ_PUBSUB_APP` |
 | `examples/mqtt/` | MQTT publish/subscribe (Mosquitto) | `MQTT_DEMO_APP` |
+| `examples/timer/` | Timeout Control / Notification / Scheduler | `TIMER_DEMO_APP` |
+| `examples/routing/` | Route / Filter / RouteToLabel+Label / FlowOrder | `ROUTING_DEMO_APP` |
+| `examples/slack/` | Slack connector — private channels + send message | `SLACK_DEMO_APP` |
 | `examples/dbnode/` | DatabaseRetrieve node grid encoding | `DB_NODE_APP` |
 | `examples/jdbc/` | JavaCompute + JDBCProviders policy | `PG_JDBC_APP` |
 | `examples/odbc/` | ESQL over ODBC | `DB_PG_ODBC_APP` |
@@ -324,10 +327,10 @@ Before creating **ANY** artifacts, you **MUST**:
 | Reset Content Descriptor | `ComIbmResetContentDescriptor.msgnode` | |
 | **Routing / Control** | | |
 | Route | `ComIbmRoute.msgnode` | `distributionMode` + `outTerminals` + `filterTable` required; see extended rules |
-| Filter | `ComIbmFilter.msgnode` | |
-| Flow Order | `ComIbmFlowOrder.msgnode` | |
-| Label | `ComIbmLabel.msgnode` | |
-| Route To Label | `ComIbmRouteToLabel.msgnode` | |
+| Filter | `ComIbmFilter.msgnode` | ESQL is a **`FILTER MODULE`** and uses **`Root`, not `InputRoot`**; terminals `true`/`false`/`unknown` |
+| Flow Order | `ComIbmFlowOrder.msgnode` | no properties; terminals `first`/`second` — `first` branch completes before `second` starts |
+| Label | `ComIbmLabel.msgnode` | `labelName` required; **`out` terminal only**, nothing connects into it |
+| Route To Label | `ComIbmRouteToLabel.msgnode` | `mode` = `routeToFirst`/`routeToLast`; **no `out` terminal**; reads `LocalEnvironment.Destination.RouterList.DestinationData[n].labelName` |
 | Pass Through | `ComIbmPassthru.msgnode` | |
 | **Error / Diagnostics** | | |
 | Throw | `ComIbmThrow.msgnode` | |
@@ -352,9 +355,9 @@ Before creating **ANY** artifacts, you **MUST**:
 | Resequence | `ComIbmReSequence.msgnode` | |
 | Sequence | `ComIbmSequence.msgnode` | |
 | **Timer / Scheduler** | | |
-| Timeout Control | `ComIbmTimeoutControl.msgnode` | |
-| Timeout Notification | `ComIbmTimeoutNotification.msgnode` | |
-| Scheduler | `ComIbmScheduler.msgnode` | |
+| Timeout Control | `ComIbmTimeoutControl.msgnode` | mid-flow; needs `defaultQueueManager` — see `Timer.md` |
+| Timeout Notification | `ComIbmTimeoutNotification.msgnode` | input node; `automatic` needs no MQ, `controlled` does |
+| Scheduler | `ComIbmScheduler.msgnode` | input node; `scheduleType` is `interval`, **not** `repeatInterval` |
 | **File** | | |
 | File Input | `ComIbmFileInput.msgnode` | `inputDirectory` must be ABSOLUTE; see extended rules |
 | File Output | `ComIbmFileOutput.msgnode` | `outputDirectory` must be ABSOLUTE; filename via LocalEnvironment needs `computeMode`; see extended rules |
@@ -672,6 +675,42 @@ rejects duplicates with `["is not allowed to have the additional property
 *and* `filterSupport` needs a body *and* a `<filter>` (runtime-verified with
 Amazon S3 `UPSERTWITHWHERE`).
 
+#### Connector retrieves: wire `OutTerminal.noData`
+   Connector Request nodes have a **fourth terminal, `OutTerminal.noData`**, and
+   a zero-result `RETRIEVE*` routes to it. Unwired, an empty result set becomes
+   an exception — `BIP2230E` + `BIP9975E: No documents found`, surfacing over
+   HTTP as a 404 rather than an empty response. Wire it to a Compute that returns
+   an empty collection. Proven on Slack (`examples/slack/`); assume it applies to
+   every connector retrieve.
+
+#### Connector object/action contracts: read the connector's own model
+   The authoritative source is not the docs and not any XSD:
+   ```
+   server/nodejs_all/node_modules/@ibm-app-connect/loopback-connector-<name>/
+     overrides/objects.json     <- objects and their interactions (actions)
+     lib/models/<object>.json   <- per-interaction requestProperties.mandatory,
+                                   responseProperties.included, filterSupport
+     descriptors/<name>.json    <- credential fields per authenticationMethod
+   ```
+   Read `filterSupport` **before** building a retrieve flow — a `mandatory`
+   queryable field can mean the action maps to an API you cannot reach (Slack's
+   `message`/`RETRIEVEALL` requires `query`, i.e. Slack search, which rejects bot
+   tokens entirely).
+
+#### Connector `CREATE` needs its request schema file
+   A `CREATE` action requires `gen/<schemaPrefix>.request.schema.json` to exist
+   or the flow will not start (`BIP9958E`, naming the path). A `RETRIEVEALL` does
+   not. Either way the file must contain at least `{}` — zero bytes gives
+   `BIP5753E` at runtime.
+
+#### Connector `CREATE`: `OBJECT_NAME` is the parent discriminator
+   Where an interaction's properties include `OBJECT_NAME`/`OBJECT_ID`, set
+   **`OBJECT_NAME`** in the request body — the connector rejects the request
+   without it even when `OBJECT_ID` is present:
+   `BIP9937E ... 'Parent discriminator connector property OBJECT_NAME - not found
+   in body or filter'`. These are body properties, not `<connectorProperty/>`
+   rows.
+
 #### Filters (`<filter>` is an ELEMENT, not the `filter=""` attribute)
 
 Retrieve-style actions take their page size — and, for other actions, their where
@@ -753,8 +792,14 @@ only one of them is usable:**
 Both families are registered in the runtime and **both will run**, but the
 legacy `ComIbmKafka*` nodes **fail to build in the ACE Toolkit**, so a flow using
 them cannot be maintained by anyone opening it in the IDE. `ibmint package` and
-`mqsicreatebar -cleanBuild` on the connector family come back clean (verified:
-0 markers). The connector nodes all carry `connectorName="Kafka"`.
+`mqsicreatebar -cleanBuild -deployAsSource` on the connector family come back
+clean (verified: 0 markers). The connector nodes all carry
+`connectorName="Kafka"`.
+
+> **`-deployAsSource` is required for any app with connector nodes.** They cannot
+> be compiled to CMF. Without the flag `mqsicreatebar` reports **zero**
+> `Problem N:` lines and still writes a BAR containing only `META-INF` — check
+> that `<APP>.appzip` is actually in the archive before believing a clean result.
 
 Both families share `server/connectors/kafka/connectorkafka.jar`, so the property
 names and LocalEnvironment paths below are identical for either.
@@ -934,6 +979,41 @@ wins at runtime.
      <connections ... sourceNode="FCMComposite_1_2" sourceTerminalName="mediumPriority"     targetTerminalName="InTerminal.in"/>
      <connections ... sourceNode="FCMComposite_1_2" sourceTerminalName="OutTerminal.default" targetTerminalName="InTerminal.in"/>
      ```
+
+#### Filter node
+   - `filterExpression="esql://routine/#<Module>.Main"`, and the ESQL module is
+     **`CREATE FILTER MODULE`** — not `CREATE COMPUTE MODULE`.
+   - **Use `Root`, not `InputRoot`.** A Filter node has no output message, so no
+     `Input*`/`Output*` correlation names exist. In scope: `Root`, `Body`,
+     `Properties`, `Environment`, `LocalEnvironment`, `ExceptionList`,
+     `DestinationList`. Using `InputRoot` fails at DEPLOY time with `BIP9318E`
+     + `BIP2432E` and stops the **whole application**, not just that flow.
+   - Terminals: `OutTerminal.true`, `OutTerminal.false`, `OutTerminal.unknown`,
+     `OutTerminal.failure`. `unknown` is ESQL three-valued logic — a comparison
+     against a missing field is UNKNOWN, not FALSE — so wire it or guard with
+     `COALESCE`.
+
+#### RouteToLabel + Label nodes
+   - RouteToLabel has `InTerminal.in` and `OutTerminal.failure` **only — no
+     `out`**. Label has `OutTerminal.out` **only — no `in`**. They are never
+     wired to each other; the runtime jumps by name.
+   - `mode="routeToFirst"` or `"routeToLast"` selects **one** entry from the list.
+   - The list is `LocalEnvironment.Destination.RouterList.DestinationData` — a
+     structure that appears in NO product schema (`LocalEnvironment.schema.json`
+     types `RouterList` as a bare object):
+     ```sql
+     SET OutputLocalEnvironment.Destination.RouterList.DestinationData[1].labelName = 'alpha';
+     SET OutputLocalEnvironment.Destination.RouterList.DestinationData[2].labelName = 'beta';
+     ```
+   - The Compute writing it needs `computeMode="destinationAndMessage"`.
+   - An empty or absent list raises `BIP4256E` ("unable to locate a 'labelName'
+     element in the local environment") — it does not fall through.
+
+#### FlowOrder node
+   - No properties. Terminals `OutTerminal.first`, `OutTerminal.second`,
+     `OutTerminal.failure`. The entire `first` branch completes before `second`
+     begins, and both receive the same message — so put a reply node on one
+     branch only.
 
 6. **Create an ESQL file**
    - If the message flow contains a Compute node then create an associated ESQL file in the Application project

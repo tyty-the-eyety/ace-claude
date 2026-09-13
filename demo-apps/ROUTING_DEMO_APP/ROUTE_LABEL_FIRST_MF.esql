@@ -1,0 +1,47 @@
+-- RouteToLabel reads a list of target label names from
+-- LocalEnvironment.Destination.RouterList.DestinationData. That structure is
+-- NOT described in LocalEnvironment.schema.json (RouterList is typed as a bare
+-- object), so the shape below is the runtime-proven one.
+CREATE COMPUTE MODULE ROUTE_LABEL_FIRST_MF_Build
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- Two entries, in order: alpha then beta. mode="routeToFirst" decides which one
+		-- this node actually propagates to.
+		-- POST {"labels":"none"} skips the list entirely, to show what a
+		-- RouteToLabel node does with nothing to route to.
+		IF COALESCE(InputRoot.JSON.Data.labels, 'both') <> 'none' THEN
+			SET OutputLocalEnvironment.Destination.RouterList.DestinationData[1].labelName = 'alpha';
+			SET OutputLocalEnvironment.Destination.RouterList.DestinationData[2].labelName = 'beta';
+		END IF;
+
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.mode = 'routeToFirst';
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+CREATE COMPUTE MODULE ROUTE_LABEL_FIRST_MF_Alpha
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.mode      = InputRoot.JSON.Data.mode;
+		SET OutputRoot.JSON.Data.handledBy = 'alpha';
+		RETURN TRUE;
+	END;
+
+END MODULE;
+
+CREATE COMPUTE MODULE ROUTE_LABEL_FIRST_MF_Beta
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.mode      = InputRoot.JSON.Data.mode;
+		SET OutputRoot.JSON.Data.handledBy = 'beta';
+		RETURN TRUE;
+	END;
+
+END MODULE;
