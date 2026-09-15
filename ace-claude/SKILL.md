@@ -34,13 +34,14 @@ each has its own README with the gotchas). Prefer these:
 | `examples/timer/` | Timeout Control / Notification / Scheduler | `TIMER_DEMO_APP` |
 | `examples/routing/` | Route / Filter / RouteToLabel+Label / FlowOrder | `ROUTING_DEMO_APP` |
 | `examples/slack/` | Slack connector — private channels + send message | `SLACK_DEMO_APP` |
+| `examples/rest/` | REST Request + Async pair, spec-driven (Swagger Petstore) | `REST_DEMO_APP` |
 | `examples/dbnode/` | DatabaseRetrieve node grid encoding | `DB_NODE_APP` |
 | `examples/jdbc/` | JavaCompute + JDBCProviders policy | `PG_JDBC_APP` |
 | `examples/odbc/` | ESQL over ODBC | `DB_PG_ODBC_APP` |
 | `examples/eda/` | Aggregation / Collector / Resequence | `MQ_*_APP` |
 | `examples/dfdl/` | DFDL parse + serialize | `DFDL_DEMO_APP` |
 | `examples/policy/` | Policy projects and attachment | `POLICY_DEMO_APP` |
-| `examples/unittest/` | Headless flow unit testing | `HTTP_JSON_APP_Test` |
+| `examples/unittest/` | Headless flow unit testing — `NodeSpy` **and `NodeStub`** (test a flow with no network) | `HTTP_JSON_APP_Test`, `REST_DEMO_TEST_APP` |
 
 ## Verified against ACE 13.0.2.2 — copy from the demo apps first
 
@@ -296,10 +297,10 @@ Before creating **ANY** artifacts, you **MUST**:
 | HTTP Async Request | `ComIbmHTTPAsyncRequest.msgnode` | |
 | HTTP Async Response | `ComIbmHTTPAsyncResponse.msgnode` | |
 | **REST** | | |
-| REST Request | `ComIbmRESTRequest.msgnode` | |
-| REST Async Request | `ComIbmRESTAsyncRequest.msgnode` | |
-| REST Async Response | `ComIbmRESTAsyncResponse.msgnode` | |
-| App Connect REST Request | `ComIbmAppConnectRESTRequest.msgnode` | |
+| REST Request | `ComIbmRESTRequest.msgnode` | **spec-driven**: `definitionFile` + `operationName` mandatory, no URL — see `REST.md` |
+| REST Async Request | `ComIbmRESTAsyncRequest.msgnode` | pairs with the response node via `asyncResponseCorrelator`; no `error` terminal |
+| REST Async Response | `ComIbmRESTAsyncResponse.msgnode` | **input node, no `in` terminal**; `asyncRequestCorrelator` must match the request |
+| App Connect REST Request | `ComIbmAppConnectRESTRequest.msgnode` | calls connectors hosted on **IBM App Connect**, not arbitrary REST; NOT runtime-verified |
 | **SOAP** | | |
 | SOAP Input | `ComIbmSOAPInput.msgnode` | |
 | SOAP Reply | `ComIbmSOAPReply.msgnode` | |
@@ -979,6 +980,33 @@ wins at runtime.
      <connections ... sourceNode="FCMComposite_1_2" sourceTerminalName="mediumPriority"     targetTerminalName="InTerminal.in"/>
      <connections ... sourceNode="FCMComposite_1_2" sourceTerminalName="OutTerminal.default" targetTerminalName="InTerminal.in"/>
      ```
+
+#### REST request nodes are spec-driven
+   - `definitionFile` (a **plain filename relative to the app root**) and
+     `operationName` (an `operationId` from that spec) are mandatory with no
+     defaults — this is why a hand-authored REST node will not build. Host,
+     scheme, `basePath` and the HTTP verb all come from the document; **no URL
+     goes in the flow**. `baseURL` overrides the host.
+   - `definitionType` is `swagger_20` or `openapi_3` (not `openapi_30`). Plain
+     string, so a wrong value is not caught by validation.
+   - The msgnode's `name` property looks mandatory (`lowerBound="1"`, no default)
+     but is not — proven flows omit it.
+   - Parameters are a child **element** in the repeated form, NOT the XSD's
+     nested `<ParametersTableRow>`:
+     ```xml
+     <parameters name="status" type="query" expression="$Body/Data/status"/>
+     ```
+     `type` is `query`/`path`/`header`; `expression` is an XPath over the message
+     assembly.
+   - Response metadata: sync → `LocalEnvironment.WrittenDestination.REST`
+     (`URL`, `Method`, `StatusCode`, `TotalRequestTime`); async →
+     `LocalEnvironment.REST.Response`. The async response flow does NOT see
+     `WrittenDestination.REST`.
+   - `error` (HTTP error status, body at `errorDataLocation`) and `failure` (node
+     exception) are different terminals.
+   - The async pair is joined by `asyncResponseCorrelator` == `asyncRequestCorrelator`,
+     not by a wire; `RESTAsyncResponse` is an input node with no `in` terminal, so
+     a correct pair looks disconnected. The HTTP reply identifier survives the hop.
 
 #### Filter node
    - `filterExpression="esql://routine/#<Module>.Main"`, and the ESQL module is

@@ -1,0 +1,14 @@
+CREATE COMPUTE MODULE REST_ASYNC_RESP_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.via        = 'RESTAsyncRequest + RESTAsyncResponse';
+		SET OutputRoot.JSON.Data.statusCode = InputLocalEnvironment.REST.Response.StatusCode;
+		DECLARE n INTEGER CARDINALITY(InputRoot.JSON.Data.Item[]);
+		SET OutputRoot.JSON.Data.count = n;
+		SET OutputRoot.JSON.Data.firstName = InputRoot.JSON.Data.Item[1].name;
+		RETURN TRUE;
+	END;
+
+END MODULE;

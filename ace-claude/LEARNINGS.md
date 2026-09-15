@@ -975,3 +975,171 @@ Runbook in `Slack.md`, copy-ready flows in `examples/slack/`, proof app
   present, 0 markers). **Always check the BAR actually contains `<APP>.appzip`**
   rather than trusting a zero-marker result — this is the one case found so far
   where "no problems" and "nothing built" look identical.
+
+## REST request nodes (3 of 4 runtime-proven vs the Swagger Petstore)
+
+Runbook in `REST.md`, copy-ready flows in `examples/rest/`, proof app
+`REST_DEMO_APP` (workspace2). Driven against
+`https://petstore.swagger.io/v2/swagger.json` — no MQ, no DB, no credentials,
+only outbound HTTPS, so this is a cheap family to re-verify.
+`AppConnectRESTRequest` is **not** proven: it targets connectors hosted on IBM
+App Connect, so it needs an App Connect instance rather than any REST endpoint.
+
+- **These nodes are spec-driven, not URL-driven — that is why a hand-authored one
+  will not build.** `definitionFile` and `operationName` are mandatory with no
+  defaults, and `definitionFile` is a **plain filename relative to the
+  application root** (spec beside the msgflow; `ibmint package` ships it
+  automatically). `operationName` is an `operationId` from the spec. With only
+  those set the node called `https://petstore.swagger.io/v2/store/inventory` —
+  scheme, host, `basePath` and the HTTP verb all came from the document, and **no
+  URL appears anywhere in the flow**. `baseURL` overrides the host.
+- **`definitionType` is `swagger_20` or `openapi_3`** — note `openapi_3`, NOT
+  `openapi_30`. The two provider ids come from
+  `com.ibm.etools.mft.restapi.ui`: `com/ibm/broker/rest/{swagger_20,openapi_3}/ApiProviderImpl`.
+  It is a plain `xsd:string` (XSD default `swagger_20`), so a wrong value is not
+  caught by schema validation. Mandatory only on `AppConnectRESTRequest`.
+- **The msgnode's mandatory-looking `name` property is a red herring.** It is
+  `lowerBound="1"` with no default, but all four proven flows package, deploy and
+  run without it. Don't chase it.
+- **`iib:parameters` is a child ELEMENT and rows use the repeated form**, not the
+  XSD's nested `<ParametersTableRow>` — the same convention as the Collector's
+  `eventHandlerPropertyTable`, and another case where the XSD's row shape is not
+  what the runtime reads:
+  ```xml
+  <parameters name="status" type="query" expression="$Body/Data/status"/>
+  ```
+  `name` must match the spec's parameter, `type` is `query`/`path`/`header`
+  (required), `expression` is `iib:valueType="xpath"`. `$Body/Data/status` reaches
+  a field in a JSON request body — for the JSON domain `$Body` is the `JSON`
+  parser element. Proven: the node built `…/pet/findByStatus?status=available`.
+- **Sync and async put response metadata in different places.** `RESTRequest`
+  populates `LocalEnvironment.WrittenDestination.REST` (`URL`, `Method`,
+  `StatusCode`, `TotalRequestTime`, header/body sizes, Compression subtrees);
+  `RESTAsyncResponse` populates `LocalEnvironment.REST.Response` (`StatusCode`,
+  `CorrelationID`, sizes). **`WrittenDestination.REST` is not available in the
+  async response flow** — it belongs to the flow that made the call.
+- **`error` and `failure` are separate terminals** on the request nodes. `error`
+  carries HTTP error-status responses (body at `errorDataLocation`, default
+  `$OutputRoot`); `failure` is node exceptions. `RESTAsyncRequest` has no `error`
+  terminal — the response node owns it.
+- **The async pair is joined by a correlator, not a wire.**
+  `asyncResponseCorrelator` on the request must equal `asyncRequestCorrelator` on
+  the response. `RESTAsyncResponse` is an **input node**
+  (`nodeType="response,asynchronous,input"`) with no `in` terminal, so a correct
+  pair looks like two disconnected flows — same visual oddity as
+  RouteToLabel/Label. **The HTTP reply identifier survives the hop**: flow A
+  receives the request and ends at the async node, flow B replies to the original
+  caller, and flow A's thread is not held during the call.
+- **The `-deployAsSource` requirement is about CONNECTOR nodes, not Java.** REST
+  nodes are `requiresJava="true"` too, yet `REST_DEMO_APP` builds clean under a
+  plain `mqsicreatebar -cleanBuild` (exit 0, `REST_DEMO_APP.appzip` present).
+  Only `ComIbmApplicationConnector*` / `com_ibm_connector_*` nodes cannot be
+  compiled to CMF.
+- `securityIdentity` on these nodes uses a **`rest`** vault credential, and the
+  in-field help says to give the name **without** the `rest::` prefix. Auth types:
+  `basic` (username+password), `basicApiKey` (both + api-key), `apiKey` (api-key).
+
+## Flow unit testing part 2: NodeStub, and a correction
+
+Extends the earlier entry. Proof project `REST_DEMO_TEST_APP` (workspace2),
+**19/19 green in 0.4s with no network access**; examples in
+`examples/unittest/` (`GET_INVENTORY`, `FIND_BY_STATUS`, `STUB_BEHAVIOUR`,
+`ASSERTION_STYLES`).
+
+- **CORRECTION to the earlier entry: `messagePath()` is NOT broken.** That
+  entry said reads "fail with BIP2331 for every path form" on a propagated
+  assembly. They fail for the *slash* form. The API has **two different path
+  syntaxes** and the earlier attempt used the wrong one:
+  | Use | Syntax |
+  |---|---|
+  | `hasMessageTreeElement()`, `messagePath()` read, **and `localEnvironmentPath()` when building** | dotted from Root, no `$`, no slashes — `JSON.Data.inventory.available`, `WrittenDestination.REST.URL` |
+  | `ignorePath()` only | slash-delimited, **leading slash** — `/JSON/Data/pending` |
+  A `$` path on a **read** fails loudly as `Field '$' within field 'Root' does
+  not exist` ($ taken as a literal child name); a *folder* path raises BIP2111,
+  so `messagePath()` reads leaves only.
+- **A `$.` prefix when BUILDING an assembly fails SILENTLY**, which is far worse.
+  `localEnvironmentPath("$.WrittenDestination.REST.URL").setValue(...)` succeeds,
+  serializes into the assembly as a literal `<iib:element iib:name="$">` wrapper,
+  and the flow never sees the value — no error anywhere. Use the dotted form for
+  writes too.
+- **`NodeStub` replaces a node, so a flow calling REST/DB/a connector can be
+  tested hermetically** — but only if it is driven correctly, and the wrong way
+  gives NO warning:
+  - ✅ `new NodeSpy(inputNode).propagate(assembly, "out")` — the stub intercepts.
+  - ❌ `stub.evaluate(assembly, false, "in")` — **the REAL node executes** (the
+    HTTP call actually went out, `statusCode:200`) and the stub propagates an
+    **EMPTY** message. `isTrainedForCall()` returns `true` either way, so the
+    stub looks configured while being bypassed.
+- **`NodeSpy.evaluate(assembly, boolean, terminal)`'s boolean means "evaluate in
+  ISOLATION", not "propagate"** — `true` stops at that node, `false` lets the
+  flow continue downstream. Proven by downstream call counts. The older
+  `TransformTest` passes `true` and is correct, but only because it tests a
+  single node.
+- **Stop the flow on the DOWNSTREAM node's INPUT terminal**
+  (`setStopAtInputTerminal("in")` on the HTTPReply node). Using
+  `setStopAtOutputTerminal("out")` on the node you are asserting about drives its
+  propagate count to **0**, which reads as "the node never ran".
+- **A stub DOES carry LocalEnvironment** when the dotted path form is used, so
+  ESQL reading `LocalEnvironment.WrittenDestination.*` IS coverable. (An earlier
+  draft of this entry claimed body-only; that was the silent `$.` trap above, not
+  a stub limitation — caught by re-testing with the corrected syntax.)
+- **`onCall()` cannot express per-call behaviour at all — a hard API limit.**
+  Proven from bytecode, not just observation: `NodeStub` caches one
+  `iDefaultTraining`, so `onCall()` returns the same `TrainedBehaviour` every
+  time, and **no native signature carries a call index**
+  (`_onCallPropagatesMessage(handle, inTerminal, outTerminal, assembly)`).
+  Training twice replays call 1. `isTrainedForCall(s)` takes the **input terminal
+  name** ("in" → true; "out"/"1"/"bogus" → false), which is the last thing that
+  could have carried a call number. Drive the flow once per scenario instead.
+- **A node can only be mocked ONCE per test**: a second `NodeSpy` on the same
+  node raises `Node already mocked: <flow>/<node>. You can only mock a Data Flow
+  Node once`. Hoist the spy and reuse it.
+- **`propagatesInputMessage(in, out)` is a pass-through stub** — replaces the
+  node but forwards whatever arrived.
+- **`getMessageTreeSerializedForm()` is the fastest way to find a path** — it
+  dumps the logical tree as XML with `iib:valueType` on every element. Same for
+  `getLocalEnvironmentTreeSerializedForm()` / `Environment` / `ExceptionList`.
+- **Tree matchers assert logical TYPE as well as value**:
+  `hasMessageTreeElement(p).isInteger().equals(42)`, with `.ignoreTypes()` when
+  only the text matters. Much better failure messages than a whole-body compare.
+- Compute nodes report `outputTerminalNames() = failure,out,out1,out2,out3,out4`
+  whether or not the extra terminals are wired.
+- **Async pairs (`RESTAsyncRequest`/`RESTAsyncResponse`) need both techniques.**
+  The response half is an input node, so `propagate()` straight into it tests it
+  hermetically — note it reads `LocalEnvironment.REST.Response`, not
+  `WrittenDestination.REST`. For the correlation end to end, use
+  `whenPropagateCountIs(1)` on the response flow's node and wait on the
+  `CompletableFuture` after driving the request flow.
+- **`--start-msgflows false` silently breaks any cross-flow test.** With flows
+  stopped the async response flow never runs and the wait times out at propagate
+  count 0. Run async-pair tests WITHOUT that flag; guard them with JUnit's
+  `assumeTrue(...)` so they report ABORTED rather than FAILED elsewhere (26/26
+  with flows started, 25 + 1 skipped without, exit 0 either way).
+- **A test CAN deploy its own application**: `TestSetup.setBarFileSearchPath(dir)`
+  + `deployBarFile("X.bar")` (or an absolute path) returns true, and the flow is
+  immediately spy-able and drivable — proven with an app deliberately absent from
+  the work dir. **But it is a REAL deployment**: the app is unpacked into
+  `<work-dir>/run/` and persists after the run, and the suite slowed from ~2s to
+  ~12s. Isolate it in its own class; it is not side-effect free.
+- **Test-project classpath: all five jars ship with ACE** —
+  `common/classes/IntegrationTest.jar`, `common/classes/hamcrest-2.2.jar`,
+  `tools/plugins/junit-jupiter-api_5.10.2.jar`,
+  `tools/plugins/junit-platform-commons_1.10.2.jar`, and
+  `tools/plugins/org.opentest4j_1.3.0.jar` (the last ONLY for `assumeTrue()`,
+  whose absence fails as `cannot access TestAbortedException`).
+- **Never use `org.eclipse.jdt.USER_LIBRARY/...` in a test project's
+  `.classpath`** — a user library is defined **per Eclipse workspace**, so the
+  project builds in one workspace and shows unresolved imports in another, and it
+  does not resolve headlessly. Use the
+  `com.ibm.etools.mft.unittest.integrationTestDependencies` container (portable)
+  or explicit `kind="lib"` jar paths (absolute, always resolves).
+- **After hand-editing `.classpath`, the Toolkit needs Refresh (F5) + Project →
+  Clean before the jars even appear in Project Properties → Java Build Path** (and
+  they may still need ticking). Until then the editor shows unresolved imports
+  while `ibmint package` compiles the same source cleanly — so **Toolkit red
+  markers are not evidence the tests are broken**. Confirm against the headless
+  build first. This bites systematically because this skill hand-authors project
+  files outside the Toolkit.
+- Still unexplored: `SpyObjectReference.subflowNode()` and the exception matchers
+  `hasMessageNumber` / `containsMessageText` / `causedBy` (the latter need a flow
+  with error handling wired, which none of these have).

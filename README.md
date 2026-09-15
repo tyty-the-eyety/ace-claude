@@ -72,7 +72,7 @@ dev-server work dir, vault key, queue manager, DSN).
 | DFDL parse + serialize | `DFDL_DEMO_APP` | `DFDL.md` |
 | EDA nodes: Aggregation, Collector, Resequence | `MQ_AGGREGATION_APP`, `MQ_COLLECTOR_APP`, `MQ_RESEQUENCE_APP` | `examples/eda/` |
 | Policy projects: MQEndpoint, HTTPRequest, Timer, WLM, TCPIP, Security/vault, ... | `POLICY_DEMO_APP` + `POLICY_DEMO_POLICIES` | `PolicyProject.md` |
-| Headless flow unit testing (Test Project + NodeSpy) | `HTTP_JSON_APP_Test` | `examples/unittest/` |
+| Headless flow unit testing (Test Project, NodeSpy + NodeStub — a flow tested with no network) | `HTTP_JSON_APP_Test`, `REST_DEMO_TEST_APP` | `examples/unittest/` |
 | Amazon S3 connector: create, upsert, download, copy, list and delete objects | `S3_CONNECTOR_APP` + `S3_CONNECTOR_POLICIES` | `AmazonS3.md`, `examples/s3/` |
 | Kafka: producer, consumer and read nodes, PLAINTEXT and SASL | `KAFKA_DEMO_APP` + `KAFKA_DEMO_POLICIES` | `examples/kafka/` |
 | LDAP connector: search, create, update, delete entries | `LDAP_DEMO_APP` + `LDAP_DEMO_POLICIES` | `examples/ldap/` |
@@ -80,6 +80,7 @@ dev-server work dir, vault key, queue manager, DSN).
 | MQTT publish/subscribe against Mosquitto | `MQTT_DEMO_APP` | `examples/mqtt/` |
 | Timer nodes: Scheduler (interval + cron), TimeoutNotification (automatic + controlled), TimeoutControl set/cancel, Timer policy | `TIMER_DEMO_APP` + `TIMER_DEMO_POLICIES` | `Timer.md`, `examples/timer/` |
 | Routing nodes: Route, Filter, RouteToLabel + Label, FlowOrder | `ROUTING_DEMO_APP` | `examples/routing/` |
+| REST request nodes: RESTRequest (spec-driven, query parameters) and the async request/response pair, vs the Swagger Petstore | `REST_DEMO_APP` | `REST.md`, `examples/rest/` |
 | Slack connector: list private channels, send message | `SLACK_DEMO_APP` + `SLACK_DEMO_POLICIES` | `Slack.md`, `examples/slack/` |
 
 > **Connector scope.** All six Amazon S3 actions in the table are

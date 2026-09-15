@@ -1,0 +1,21 @@
+CREATE COMPUTE MODULE REST_INVENTORY_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+
+		-- The REST Request node writes call metadata to
+		-- LocalEnvironment.WrittenDestination.REST — Method, URL, StatusCode
+		-- and TotalRequestTime are all populated after the call.
+		SET OutputRoot.JSON.Data.calledUrl  = InputLocalEnvironment.WrittenDestination.REST.URL;
+		SET OutputRoot.JSON.Data.method     = InputLocalEnvironment.WrittenDestination.REST.Method;
+		SET OutputRoot.JSON.Data.statusCode = InputLocalEnvironment.WrittenDestination.REST.StatusCode;
+		SET OutputRoot.JSON.Data.elapsedMs  = InputLocalEnvironment.WrittenDestination.REST.TotalRequestTime;
+
+		-- outputDataLocation defaults to $OutputRoot, so the parsed response
+		-- body arrives as InputRoot.JSON.Data in this node.
+		SET OutputRoot.JSON.Data.inventory  = InputRoot.JSON.Data;
+		RETURN TRUE;
+	END;
+
+END MODULE;

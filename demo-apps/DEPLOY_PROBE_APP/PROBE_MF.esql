@@ -1,0 +1,9 @@
+CREATE COMPUTE MODULE PROBE_MF_Build
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties = InputRoot.Properties;
+		SET OutputRoot.JSON.Data.deployedByTest = TRUE;
+		SET OutputRoot.JSON.Data.echo = InputRoot.JSON.Data.echo;
+		RETURN TRUE;
+	END;
+END MODULE;

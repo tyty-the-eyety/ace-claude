@@ -1,0 +1,22 @@
+CREATE COMPUTE MODULE REST_FINDBYSTATUS_MF_BuildReply
+
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		SET OutputRoot.Properties.ContentType = 'application/json';
+		SET OutputRoot.JSON.Data.calledUrl  = InputLocalEnvironment.WrittenDestination.REST.URL;
+		SET OutputRoot.JSON.Data.statusCode = InputLocalEnvironment.WrittenDestination.REST.StatusCode;
+
+		-- findPetsByStatus returns a JSON array, which the JSON parser presents
+		-- as repeated Item children. Summarise rather than echo all of it.
+		DECLARE n INTEGER CARDINALITY(InputRoot.JSON.Data.Item[]);
+		SET OutputRoot.JSON.Data.count = n;
+		CREATE FIELD OutputRoot.JSON.Data.names IDENTITY (JSON.Array)names;
+		DECLARE i INTEGER 1;
+		WHILE i <= n AND i <= 5 DO
+			SET OutputRoot.JSON.Data.names.Item[i] = InputRoot.JSON.Data.Item[i].name;
+			SET i = i + 1;
+		END WHILE;
+		RETURN TRUE;
+	END;
+
+END MODULE;
