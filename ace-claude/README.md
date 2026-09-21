@@ -13,13 +13,14 @@ A portable Claude Code knowledge pack for developing IBM App Connect Enterprise 
 | `examples/http_nodes.msgflow` | HTTP Input, WSRequest (`httpVersion`, `protocol`, `messageDomainProperty`), WSReply |
 | `examples/subflow_terminals.subflow` | Correct `InTerminal.Input` / `OutTerminal.Output` xmi:ids, `subflowImplFile` warning |
 | `examples/esql_patterns.esql` | 7 annotated patterns: DECLARE order, repeating elements, FOR loop, datetime `HH`, error handlers, namespace mapping |
-| `examples/unittest/` | Headless flow unit tests: `NodeSpy` single-node, plus `NodeStub` whole-flow tests that need no network, and all four assertion styles |
+| `examples/unittest/` | Seven worked test classes indexed by technique; the rules live in `Testing.md` |
 | `examples/timer/` | Timer-family flows: Scheduler interval + cron, automatic TimeoutNotification, TimeoutControl set/cancel + controlled replay, plus `TIMER_POLICY_TEMPLATE/` |
 | `examples/routing/` | Routing-family flows: Route (HTTP + MQ), Filter (`FILTER MODULE`, three terminals), RouteToLabel/Label (`RouterList`), FlowOrder |
 | `examples/rest/` | REST flows against the Swagger Petstore: no-parameter call, query parameter, async request/response pair |
 | `examples/slack/` | Slack connector: private-channel retrieve + send message, policy template, `gen/` schemas |
 | `examples/policy/` | Verified policy project template (13 policies) + `flows/` with the matching attachment msgflows/ESQL + `tools/` (WLM override file, proxy-proof script) + READMEs with attachment matrix, vault commands, proof patterns |
 | `Timer.md` | Timeout Control / Timeout Notification / Scheduler nodes: modes, the MQ prerequisite, the timeout-request format, the Scheduler cron grammar, the Timer policy |
+| `Testing.md` | Flow unit testing: the harness model, NodeSpy/NodeStub, assertion styles, classpath and error decoder — read only for testing work |
 | `REST.md` | REST Request / Async Request+Response / App Connect REST Request: spec-driven config, the `<parameters>` element, async correlation |
 | `Slack.md` | Slack connector runbook: object/action matrix, token types and scopes, `noData`, CREATE schema + `OBJECT_NAME` rules |
 | `AmazonS3.md`, `Salesforce.md`, … | Connector-specific node property and policy guidance (supplements `SKILL.md`) |

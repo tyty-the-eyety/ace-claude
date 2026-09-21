@@ -21,6 +21,12 @@ The `examples/` subfolder alongside this skill contains annotated reference file
 | `examples/subflow_terminals.subflow` | Correct `InTerminal.Input` / `OutTerminal.Output` xmi:ids, `subflowImplFile` warning |
 | `examples/esql_patterns.esql` | DECLARE placement, repeating elements, FOR loop, datetime `HH`, error handlers, namespace mapping |
 
+> **`Testing.md` — load only when the task is testing.** Read it before writing
+> or debugging a test project, a JUnit test class, or a `testproject.descriptor`.
+> It covers the harness model, `NodeSpy`/`NodeStub`, assertion styles and the
+> classpath. **Do not read it when authoring flows, ESQL, Java or maps** —
+> nothing in it applies to creating artifacts.
+
 **Runtime-verified capability folders** (ACE 13.0.2.2 — deployed, driven, observed;
 each has its own README with the gotchas). Prefer these:
 
@@ -41,7 +47,7 @@ each has its own README with the gotchas). Prefer these:
 | `examples/eda/` | Aggregation / Collector / Resequence | `MQ_*_APP` |
 | `examples/dfdl/` | DFDL parse + serialize | `DFDL_DEMO_APP` |
 | `examples/policy/` | Policy projects and attachment | `POLICY_DEMO_APP` |
-| `examples/unittest/` | Headless flow unit testing — `NodeSpy` **and `NodeStub`** (test a flow with no network) | `HTTP_JSON_APP_Test`, `REST_DEMO_TEST_APP` |
+| `examples/unittest/` | Worked test classes — `NodeSpy`, `NodeStub`, async pairs. **Rules live in `Testing.md`** | `HTTP_JSON_APP_Test`, `REST_DEMO_TEST_APP` |
 
 ## Verified against ACE 13.0.2.2 — copy from the demo apps first
 
