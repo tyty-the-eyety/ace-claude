@@ -1140,6 +1140,44 @@ Extends the earlier entry. Proof project `REST_DEMO_TEST_APP` (workspace2),
   markers are not evidence the tests are broken**. Confirm against the headless
   build first. This bites systematically because this skill hand-authors project
   files outside the Toolkit.
+- **An MQ-fronted flow needs a queue manager configured to START in the
+  harness** — otherwise every test fails before it runs. `MQInput`/`MQOutput`
+  nodes make startup fail with `BIP2214E ... no value for attribute
+  'destinationQueueManagerName'`, and the tests then error `Cannot call propagate
+  on a message flow which is in 'failed' state`. Set `defaultQueueManager: '<QM>'`
+  in the **test** work dir's `server.conf.yaml`; the QM need only resolve, not be
+  started (`--start-msgflows false` keeps the input node from polling). Every
+  shipped example is an HTTP/REST front-end, so this surfaced only when a flow
+  was wrapped with MQ nodes — proven against a `MQInput → … → RESTRequest(stub) →
+  … → MQOutput` flow, 4/4 green once the QM was set.
+- **XMLNSC numeric elements carry logical type INTEGER in the tree**, so a
+  `.isString()` assertion on them fails. ESQL like `SET OutputRoot.XMLNSC.r.count
+  = CARDINALITY(...)` yields `iib:valueType="INTEGER"` on `count`; assert it with
+  `.ignoreTypes().equals("3")` or `.isInteger().equals(3)`. (`getMessageTreeSerializedForm()`
+  shows the valueType and settles it fast.)
 - Still unexplored: `SpyObjectReference.subflowNode()` and the exception matchers
   `hasMessageNumber` / `containsMessageText` / `causedBy` (the latter need a flow
   with error handling wired, which none of these have).
+
+## mqsicreatebar -cleanBuild needs an X display (headless agents / CI)
+
+`mqsicreatebar` drives a headless Eclipse, so it needs an X display even for
+`-cleanBuild` — unlike `ibmint package`, which has no such dependency. With no
+display it aborts before compiling:
+
+```
+BIP0965E Error compiling files in mqsicreatebar.
+A required display could not be obtained from the underlying operating system.
+To resolve this issue on Linux install X Virtual Frame Buffer (Xvfb) ... and set
+the DISPLAY environment variable ...
+```
+
+Two ways through it:
+- `xvfb-run -a mqsicreatebar -data <ws> -b x.bar -a <APP> -cleanBuild`, or
+- if a desktop session is already logged in, pass **that** session's `DISPLAY`
+  and `XAUTHORITY` to the command (e.g. `DISPLAY=:0 XAUTHORITY=<session xauth>`),
+  which matters when running under `env -i` since that strips both.
+
+So in a headless environment `ibmint package` can succeed while the companion
+`mqsicreatebar -cleanBuild` validation silently can't even start — check for
+`BIP0965E`, not just a missing success line.

@@ -168,6 +168,20 @@ Standalone pre-compile check (catches API errors before ibmint):
   **leaf**: a folder path raises BIP2111.
 - `TestSetup.restoreAllMocks()` in `@AfterEach`.
 - The run needs the work dir's `--vault-key` like any other server start.
+- **An MQ-fronted flow must have a queue manager configured, or it never
+  starts.** `MQInput`/`MQOutput` nodes make flow startup fail with `BIP2214E ...
+  no value for attribute 'destinationQueueManagerName'` when the test work dir
+  has no `defaultQueueManager`, and every test then errors `Cannot call propagate
+  on a message flow which is in 'failed' state`. Set `defaultQueueManager: '<QM>'`
+  in the **test** work dir's `server.conf.yaml`. The QM does not need to be
+  started — `--start-msgflows false` stops the input node polling — the name only
+  has to resolve. None of the shipped examples hit this because they are all
+  HTTP/REST front-ends; the harness's "no queue manager" claim holds only for those.
+- **An XMLNSC numeric element has logical type INTEGER in the tree**, even though
+  XML serializes to text. ESQL that assigns a number (e.g. `SET
+  OutputRoot.XMLNSC.result.count = CARDINALITY(...)`) produces an element whose
+  `iib:valueType` is `INTEGER`, so `hasMessageTreeElement(p).isString()...` fails;
+  assert the value with `.ignoreTypes().equals("3")` (or `.isInteger().equals(3)`).
 
 ---
 
@@ -379,6 +393,8 @@ you wire them or not.
 | downstream node has propagate count 0 | either `evaluate(..., true, ...)` (isolation), or `setStopAtOutputTerminal` on the node you are asserting about |
 | stub ignored, real call goes out | drove the flow with `evaluate()` on the stub instead of `propagate()` on the input node |
 | async/cross-flow test times out at 0 | `--start-msgflows false` — omit it |
+| `BIP2214E ... destinationQueueManagerName` at startup | MQ-fronted flow with no `defaultQueueManager` in the test work dir — set it in `server.conf.yaml` |
+| `Cannot call propagate ... message flow ... in 'failed' state` | the flow failed to **start** (usually the MQ/QM config above) — fix the start failure, then propagate |
 
 ## See also
 
